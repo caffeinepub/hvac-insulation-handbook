@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   HVAC & Insulation Handbook — Design System
+   Theme: Industrial Technical Manual
+   Colors: Deep slate navy + warm amber/gold accent
+   Typography: Fraunces (display) + General Sans (body)
+   ============================================================ */
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("/assets/fonts/Fraunces.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans-Variable.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/assets/fonts/JetBrainsMono[wght].woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.375rem;
+
+    /* Dark navy/slate base */
+    --background: 0.14 0.018 255;
+    --foreground: 0.93 0.01 90;
+
+    --card: 0.17 0.022 255;
+    --card-foreground: 0.93 0.01 90;
+
+    --popover: 0.19 0.024 255;
+    --popover-foreground: 0.93 0.01 90;
+
+    /* Warm amber gold as primary */
+    --primary: 0.78 0.16 78;
+    --primary-foreground: 0.12 0.02 255;
+
+    --secondary: 0.22 0.025 255;
+    --secondary-foreground: 0.88 0.01 90;
+
+    --muted: 0.20 0.022 255;
+    --muted-foreground: 0.58 0.02 255;
+
+    --accent: 0.25 0.03 255;
+    --accent-foreground: 0.93 0.01 90;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 0.28 0.03 255;
+    --input: 0.26 0.03 255;
+    --ring: 0.78 0.16 78;
+
+    --chart-1: 0.78 0.16 78;
+    --chart-2: 0.65 0.12 200;
+    --chart-3: 0.55 0.14 160;
+    --chart-4: 0.70 0.15 50;
+    --chart-5: 0.60 0.18 30;
+
+    /* Sidebar slightly lighter than background */
+    --sidebar: 0.12 0.016 255;
+    --sidebar-foreground: 0.93 0.01 90;
+    --sidebar-primary: 0.78 0.16 78;
+    --sidebar-primary-foreground: 0.12 0.02 255;
+    --sidebar-accent: 0.22 0.026 255;
+    --sidebar-accent-foreground: 0.93 0.01 90;
+    --sidebar-border: 0.25 0.028 255;
+    --sidebar-ring: 0.78 0.16 78;
+
+    /* Custom handbook tokens */
+    --handbook-amber: 0.78 0.16 78;
+    --handbook-amber-dim: 0.65 0.12 78;
+    --handbook-amber-bright: 0.88 0.18 78;
+    --handbook-rule: 0.30 0.035 255;
+    --handbook-section-num: 0.55 0.08 78;
+    --handbook-body-text: 0.82 0.015 255;
+    --handbook-subtitle-text: 0.70 0.02 255;
+  }
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "General Sans", system-ui, sans-serif;
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: oklch(var(--sidebar));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(var(--handbook-rule));
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(var(--handbook-amber-dim));
+  }
+
+  /* Selection */
+  ::selection {
+    background: oklch(var(--handbook-amber) / 0.3);
+    color: oklch(var(--foreground));
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Fraunces", Georgia, serif;
+  }
+
+  .font-mono-code {
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  .text-amber {
+    color: oklch(var(--handbook-amber));
+  }
+
+  .text-amber-dim {
+    color: oklch(var(--handbook-amber-dim));
+  }
+
+  .bg-sidebar-surface {
+    background: oklch(var(--sidebar));
+  }
+
+  .border-rule {
+    border-color: oklch(var(--handbook-rule));
+  }
+
+  .handbook-body-text {
+    color: oklch(var(--handbook-body-text));
+    line-height: 1.8;
+    font-size: 0.9375rem;
+  }
+
+  .handbook-prose p + p {
+    margin-top: 1em;
+  }
+}
