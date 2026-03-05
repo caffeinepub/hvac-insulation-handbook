@@ -110,7 +110,9 @@ export interface Subsection {
 }
 export interface backendInterface {
     getAllSections(): Promise<Array<SectionSummary>>;
+    getCalendarNotes(): Promise<Array<string>>;
     getSection(id: bigint): Promise<Section>;
+    saveCalendarNotes(notes: Array<string>): Promise<void>;
     searchSections(searchQuery: string): Promise<Array<SearchResult>>;
 }
 export class Backend implements backendInterface {
@@ -129,6 +131,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getCalendarNotes(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCalendarNotes();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCalendarNotes();
+            return result;
+        }
+    }
     async getSection(arg0: bigint): Promise<Section> {
         if (this.processError) {
             try {
@@ -140,6 +156,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getSection(arg0);
+            return result;
+        }
+    }
+    async saveCalendarNotes(arg0: Array<string>): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveCalendarNotes(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveCalendarNotes(arg0);
             return result;
         }
     }

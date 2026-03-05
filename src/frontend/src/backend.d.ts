@@ -28,6 +28,8 @@ export interface Subsection {
 }
 export interface backendInterface {
     getAllSections(): Promise<Array<SectionSummary>>;
+    getCalendarNotes(): Promise<Array<string>>;
     getSection(id: bigint): Promise<Section>;
+    saveCalendarNotes(notes: Array<string>): Promise<void>;
     searchSections(searchQuery: string): Promise<Array<SearchResult>>;
 }

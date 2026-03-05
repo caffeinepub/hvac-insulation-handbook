@@ -2,7 +2,11 @@ import Text "mo:core/Text";
 import Array "mo:core/Array";
 import Iter "mo:core/Iter";
 import Nat "mo:core/Nat";
+import Map "mo:core/Map";
+import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
+
+
 
 actor {
   type Subsection = {
@@ -216,6 +220,8 @@ actor {
     },
   ];
 
+  let calendarNotes = Map.empty<Principal, [Text]>();
+
   public query ({ caller }) func getAllSections() : async [SectionSummary] {
     handbookSections.map<Section, SectionSummary>(
       func(section) {
@@ -259,5 +265,26 @@ actor {
         };
       }
     );
+  };
+
+  public query ({ caller }) func getCalendarNotes() : async [Text] {
+    switch (calendarNotes.get(caller)) {
+      case (?notes) { notes };
+      case (null) { ["", "", "", "", ""] };
+    };
+  };
+
+  public shared ({ caller }) func saveCalendarNotes(notes : [Text]) : async () {
+    if (notes.size() != 5) {
+      return Runtime.trap("Exactly 5 notes required (one for each weekday: Monday through Friday)");
+    };
+
+    for (note in notes.values()) {
+      if (note.size() > 200) {
+        return Runtime.trap("Each note must be <= 200 characters");
+      };
+    };
+
+    calendarNotes.add(caller, notes);
   };
 };

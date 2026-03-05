@@ -25,7 +25,9 @@ export interface SectionSummary {
 export interface Subsection { 'body' : string, 'subtitle' : string }
 export interface _SERVICE {
   'getAllSections' : ActorMethod<[], Array<SectionSummary>>,
+  'getCalendarNotes' : ActorMethod<[], Array<string>>,
   'getSection' : ActorMethod<[bigint], Section>,
+  'saveCalendarNotes' : ActorMethod<[Array<string>], undefined>,
   'searchSections' : ActorMethod<[string], Array<SearchResult>>,
 }
 export declare const idlService: IDL.ServiceClass;

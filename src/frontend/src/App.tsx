@@ -2,10 +2,13 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   BookOpen,
+  CalendarDays,
   CheckSquare,
   ChevronRight,
   Clock,
+  DollarSign,
   Home,
+  Loader2,
   Menu,
   Search,
   TrendingUp,
@@ -13,6 +16,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useActor } from "./hooks/useActor";
 
 // ----------------------------------------------------------------
 // Types
@@ -22,7 +26,9 @@ type TabView =
   | "history"
   | "sales_tips"
   | "in_home_process"
-  | "checklist";
+  | "checklist"
+  | "calendar"
+  | "financial";
 
 interface Subsection {
   subtitle: string;
@@ -1167,6 +1173,892 @@ function ChecklistPage() {
 }
 
 // ----------------------------------------------------------------
+// Calendar Page
+// ----------------------------------------------------------------
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+function CalendarPage() {
+  const { actor, isFetching: actorLoading } = useActor();
+  const [notes, setNotes] = useState<[string, string, string, string, string]>([
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [notesLoaded, setNotesLoaded] = useState(false);
+
+  // Load notes once actor is ready
+  useEffect(() => {
+    if (actorLoading || !actor || notesLoaded) return;
+    let cancelled = false;
+    setIsLoading(true);
+    setLoadError(false);
+    actor
+      .getCalendarNotes()
+      .then((fetched) => {
+        if (cancelled) return;
+        const filled: [string, string, string, string, string] = [
+          fetched[0] ?? "",
+          fetched[1] ?? "",
+          fetched[2] ?? "",
+          fetched[3] ?? "",
+          fetched[4] ?? "",
+        ];
+        setNotes(filled);
+        setNotesLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [actor, actorLoading, notesLoaded]);
+
+  const handleNoteChange = (idx: number, value: string) => {
+    setNotes((prev) => {
+      const next = [...prev] as [string, string, string, string, string];
+      next[idx] = value.slice(0, 200);
+      return next;
+    });
+    // Reset save status when user edits
+    setSaveStatus("idle");
+  };
+
+  const handleClear = (idx: number) => {
+    setNotes((prev) => {
+      const next = [...prev] as [string, string, string, string, string];
+      next[idx] = "";
+      return next;
+    });
+    setSaveStatus("idle");
+  };
+
+  const handleSave = async () => {
+    if (!actor) return;
+    setSaveStatus("saving");
+    try {
+      await actor.saveCalendarNotes([...notes]);
+      setSaveStatus("saved");
+      // Reset to idle after 3 seconds
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch {
+      setSaveStatus("error");
+    }
+  };
+
+  return (
+    <motion.div
+      key="calendar"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="max-w-2xl mx-auto px-6 md:px-10 py-10"
+    >
+      {/* Page header */}
+      <header className="mb-10">
+        <div className="flex items-center gap-3 mb-4">
+          <CalendarDays
+            size={16}
+            style={{ color: "oklch(var(--handbook-amber))" }}
+          />
+          <span
+            className="font-mono-code text-xs font-semibold tracking-widest uppercase"
+            style={{ color: "oklch(var(--handbook-amber))" }}
+          >
+            Weekly Planner
+          </span>
+          <div
+            className="h-px flex-1"
+            style={{ background: "oklch(var(--handbook-rule))" }}
+          />
+        </div>
+        <h1 className="font-display text-4xl md:text-5xl font-semibold text-foreground mb-4 leading-tight">
+          Weekly Calendar
+        </h1>
+        <p
+          className="text-base leading-relaxed max-w-lg"
+          style={{ color: "oklch(var(--handbook-subtitle-text))" }}
+        >
+          Write your notes for each day, then hit Save. Notes are private and
+          saved to your account.
+        </p>
+        <div
+          className="mt-6 h-px"
+          style={{ background: "oklch(var(--handbook-rule))" }}
+        />
+      </header>
+
+      {/* Loading state */}
+      {isLoading && (
+        <div
+          data-ocid="calendar.loading_state"
+          className="flex items-center justify-center gap-3 py-16"
+          style={{ color: "oklch(var(--handbook-amber))" }}
+        >
+          <Loader2 size={20} className="animate-spin" />
+          <span className="font-mono-code text-sm">Loading notes…</span>
+        </div>
+      )}
+
+      {/* Load error */}
+      {!isLoading && loadError && (
+        <div
+          data-ocid="calendar.error_state"
+          className="rounded-lg border px-5 py-4 mb-6 text-sm"
+          style={{
+            borderColor: "oklch(var(--destructive) / 0.4)",
+            background: "oklch(var(--destructive) / 0.06)",
+            color: "oklch(var(--destructive))",
+          }}
+        >
+          Could not load your saved notes. Please try refreshing.
+        </div>
+      )}
+
+      {/* Day rows */}
+      {!isLoading && (
+        <div className="space-y-4">
+          {DAYS.map((day, idx) => {
+            const charCount = notes[idx].length;
+            return (
+              <motion.div
+                key={day}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.06, duration: 0.25 }}
+                className="group rounded-xl border border-border/60 overflow-hidden transition-shadow hover:shadow-sm"
+              >
+                {/* Day label row */}
+                <div
+                  className="flex items-center justify-between px-4 py-2.5"
+                  style={{ background: "oklch(var(--sidebar))" }}
+                >
+                  <span
+                    className="font-display text-sm font-semibold tracking-wide"
+                    style={{ color: "oklch(var(--handbook-amber))" }}
+                  >
+                    {day}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="font-mono-code text-xs"
+                      style={{ color: "oklch(var(--muted-foreground))" }}
+                    >
+                      {charCount}/200
+                    </span>
+                    <button
+                      type="button"
+                      data-ocid={`calendar.clear_button.${idx + 1}`}
+                      onClick={() => handleClear(idx)}
+                      disabled={charCount === 0}
+                      className={[
+                        "text-xs px-2.5 py-1 rounded-md font-medium transition-all duration-150",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-handbook",
+                        charCount > 0
+                          ? "hover:bg-destructive/10 hover:text-destructive text-muted-foreground cursor-pointer"
+                          : "text-muted-foreground/30 cursor-not-allowed",
+                      ].join(" ")}
+                      aria-label={`Clear ${day} note`}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                {/* Textarea */}
+                <textarea
+                  data-ocid={`calendar.textarea.${idx + 1}`}
+                  value={notes[idx]}
+                  onChange={(e) => handleNoteChange(idx, e.target.value)}
+                  maxLength={200}
+                  rows={3}
+                  placeholder={`Notes for ${day}…`}
+                  aria-label={`${day} notes`}
+                  className={[
+                    "w-full px-4 py-3 resize-none bg-background text-foreground text-sm leading-relaxed",
+                    "placeholder:text-muted-foreground/40 focus:outline-none transition-colors",
+                    "border-t border-border/40",
+                  ].join(" ")}
+                  style={{ fontFamily: "inherit" }}
+                />
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Save controls */}
+      {!isLoading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mt-8 flex items-center justify-between gap-4"
+        >
+          {/* Status indicators */}
+          <div className="flex items-center gap-2 min-h-[28px]">
+            <AnimatePresence mode="wait">
+              {saveStatus === "saving" && (
+                <motion.span
+                  key="saving"
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 4 }}
+                  data-ocid="calendar.loading_state"
+                  className="flex items-center gap-1.5 text-xs font-mono-code"
+                  style={{ color: "oklch(var(--muted-foreground))" }}
+                >
+                  <Loader2 size={12} className="animate-spin" />
+                  Saving…
+                </motion.span>
+              )}
+              {saveStatus === "saved" && (
+                <motion.span
+                  key="saved"
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 4 }}
+                  data-ocid="calendar.success_state"
+                  className="text-xs font-mono-code"
+                  style={{ color: "oklch(var(--handbook-amber))" }}
+                >
+                  ✓ Notes saved
+                </motion.span>
+              )}
+              {saveStatus === "error" && (
+                <motion.span
+                  key="error"
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 4 }}
+                  data-ocid="calendar.error_state"
+                  className="text-xs font-mono-code"
+                  style={{ color: "oklch(var(--destructive))" }}
+                >
+                  ✕ Save failed — please try again
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Save button */}
+          <button
+            type="button"
+            data-ocid="calendar.save_button"
+            onClick={handleSave}
+            disabled={saveStatus === "saving"}
+            className={[
+              "flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold",
+              "transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-handbook",
+              saveStatus === "saving"
+                ? "opacity-60 cursor-not-allowed"
+                : "hover:opacity-90 active:scale-95",
+            ].join(" ")}
+            style={{
+              background: "oklch(var(--handbook-amber))",
+              color: "white",
+            }}
+          >
+            {saveStatus === "saving" ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Saving…
+              </>
+            ) : (
+              "Save Notes"
+            )}
+          </button>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
+// ----------------------------------------------------------------
+// Financial Assistant Page
+// ----------------------------------------------------------------
+interface FinancialTerm {
+  term: string;
+  definition: string;
+}
+
+interface FinancialCategory {
+  num: string;
+  title: string;
+  terms: FinancialTerm[];
+}
+
+const FINANCIAL_CATEGORIES: FinancialCategory[] = [
+  {
+    num: "01",
+    title: "Stock Market Fundamentals",
+    terms: [
+      {
+        term: "Bull Market",
+        definition:
+          "A period when stock prices are rising or are expected to rise, typically defined as a 20% or more increase from recent lows. Bull markets reflect investor optimism, strong economic conditions, and rising corporate earnings. The average bull market lasts several years and can produce substantial wealth for patient, diversified investors.",
+      },
+      {
+        term: "Bear Market",
+        definition:
+          "A decline of 20% or more from recent highs in a broad market index. Bear markets are often associated with economic recessions, rising unemployment, or financial crises. Historically, bear markets last an average of 9–12 months, though severe examples like 2008–2009 can extend longer. Staying invested through bear markets is one of the most empirically validated long-term strategies.",
+      },
+      {
+        term: "P/E Ratio (Price-to-Earnings)",
+        definition:
+          "A valuation metric calculated by dividing a company's stock price by its earnings per share. A P/E of 20 means investors pay $20 for every $1 of annual earnings. Higher P/E ratios suggest the market expects faster growth; very high ratios can indicate overvaluation. The S&P 500 historically averages a P/E of roughly 15–20.",
+      },
+      {
+        term: "Market Capitalization",
+        definition:
+          "The total market value of a company's outstanding shares, calculated as share price × total shares outstanding. Companies are categorized as large-cap (>$10B), mid-cap ($2B–$10B), and small-cap (<$2B). Market cap determines a company's weight in major indexes and broadly correlates with stability (larger = more stable, smaller = more volatile but potentially higher growth).",
+      },
+      {
+        term: "Dividend",
+        definition:
+          "A portion of a company's profits distributed to shareholders, typically paid quarterly. Dividend-paying stocks are common among established, profitable companies (utilities, consumer staples, financials). Dividends provide income and can signal financial health, though high yields can sometimes indicate a company in distress. Dividend reinvestment (DRIP) accelerates compounding significantly over time.",
+      },
+      {
+        term: "Earnings Per Share (EPS)",
+        definition:
+          "Net income divided by the number of outstanding shares. EPS is a primary measure of profitability on a per-share basis. Quarterly EPS reports are major market-moving events — beating estimates tends to drive prices up, while missing estimates can cause sharp selloffs even in fundamentally healthy companies.",
+      },
+      {
+        term: "IPO (Initial Public Offering)",
+        definition:
+          "The first sale of a company's stock to the public. IPOs allow private companies to raise capital and give early investors (founders, employees, VCs) liquidity. IPO stocks are often volatile in early trading; institutional investors typically receive allocations at the offer price. Retail investors should research IPO fundamentals carefully rather than buying solely on hype.",
+      },
+      {
+        term: "Blue Chip Stock",
+        definition:
+          "Shares of large, well-established, financially stable companies with a long history of reliable performance — think Apple, Microsoft, Johnson & Johnson, Coca-Cola. Blue chips are considered lower risk than smaller companies and often pay dividends. They form the core of most conservative long-term portfolios.",
+      },
+      {
+        term: "Index Fund",
+        definition:
+          "A fund that passively tracks a market index like the S&P 500 or the total stock market. Instead of trying to pick winning stocks, index funds hold all (or most) of the stocks in the index in proportion to their market weight. They offer broad diversification at very low cost and have consistently outperformed the majority of actively managed funds over 10-year+ periods.",
+      },
+      {
+        term: "ETF (Exchange-Traded Fund)",
+        definition:
+          "Similar to an index fund but traded on an exchange like an individual stock, allowing intraday buying and selling. ETFs can track indexes, sectors, commodities, bonds, or virtually any strategy. Low-cost broad-market ETFs (such as those from Vanguard, Fidelity, or iShares) are among the most recommended investment vehicles for individual investors.",
+      },
+      {
+        term: "S&P 500",
+        definition:
+          "A stock market index tracking 500 of the largest publicly traded U.S. companies, weighted by market cap. The S&P 500 is widely considered the best single benchmark for U.S. equity performance and the basis for countless index funds. Its annualized total return including dividends has historically averaged roughly 10% over long periods.",
+      },
+      {
+        term: "Dow Jones Industrial Average",
+        definition:
+          "One of the oldest and most recognized U.S. stock indexes, tracking 30 large-cap blue-chip companies. The Dow is price-weighted (higher-priced stocks have more influence), which is a notable limitation. It is more of a historical barometer than a comprehensive market measure — the S&P 500 is generally considered a better representation of the overall market.",
+      },
+      {
+        term: "NASDAQ Composite",
+        definition:
+          "A stock market index comprising more than 3,000 companies listed on the NASDAQ exchange, heavily weighted toward technology and growth companies. The NASDAQ tends to be more volatile than the S&P 500 and both outperforms and underperforms during technology boom and bust cycles respectively.",
+      },
+      {
+        term: "Stock Split",
+        definition:
+          "When a company increases its total shares outstanding by issuing more shares to existing shareholders proportionally. A 2-for-1 split doubles the number of shares and halves the price. The total market cap doesn't change, but lower share prices can make the stock more accessible to smaller investors. Apple and Tesla have both executed notable splits in recent years.",
+      },
+      {
+        term: "Bid/Ask Spread",
+        definition:
+          "The difference between the highest price a buyer is willing to pay (bid) and the lowest price a seller will accept (ask). For large-cap liquid stocks, spreads are tiny (fractions of a cent). For illiquid stocks or smaller assets, spreads can be significant — representing a cost that investors pay on every trade. Minimizing round-trip transaction costs is a real component of long-term returns.",
+      },
+      {
+        term: "Stop-Loss Order",
+        definition:
+          "An order to sell a security automatically if its price falls to a specified level, designed to limit downside. For example, a stop-loss at 10% below purchase price would trigger a sale if the stock falls 10%. Stop-losses can prevent large losses but also lock in losses prematurely on volatile stocks. Professional traders debate their merit extensively.",
+      },
+    ],
+  },
+  {
+    num: "02",
+    title: "Cryptocurrency Terms & Advice",
+    terms: [
+      {
+        term: "Bitcoin (BTC)",
+        definition:
+          "The first and largest cryptocurrency by market capitalization, created in 2009 by the pseudonymous Satoshi Nakamoto. Bitcoin operates on a decentralized blockchain with a fixed supply capped at 21 million coins. It is often described as 'digital gold' — a store of value and hedge against inflation. Bitcoin's price history is marked by extreme volatility, including multiple 70–80% drawdowns followed by new all-time highs.",
+      },
+      {
+        term: "Ethereum (ETH)",
+        definition:
+          "The second-largest cryptocurrency, distinguished by its smart contract functionality — programmable code that executes automatically on the blockchain without intermediaries. Ethereum is the foundation for most DeFi protocols, NFTs, and decentralized applications. Unlike Bitcoin's fixed supply, Ethereum's supply is dynamic and has become deflationary at times following protocol upgrades.",
+      },
+      {
+        term: "Altcoin",
+        definition:
+          "Any cryptocurrency other than Bitcoin. The altcoin market ranges from major, established assets like Ethereum, Solana, and Cardano to thousands of smaller, speculative tokens. Most altcoins carry substantially higher risk than Bitcoin — the majority of historically launched altcoins have lost 95%+ of their value or ceased to exist.",
+      },
+      {
+        term: "Blockchain",
+        definition:
+          "A distributed digital ledger that records transactions across many computers simultaneously. Once recorded, data cannot be altered retroactively without changing all subsequent blocks and achieving consensus from the network. Blockchain technology underlies all cryptocurrencies and is also being explored for supply chain management, voting, healthcare records, and more.",
+      },
+      {
+        term: "Hot Wallet vs. Cold Wallet",
+        definition:
+          "A hot wallet is connected to the internet (mobile app, exchange account, browser extension) — convenient but vulnerable to hacks and phishing. A cold wallet stores private keys offline (hardware device like a Ledger or Trezor, or paper wallet) — far more secure for significant holdings. The crypto maxim is: 'Not your keys, not your coins' — if you leave crypto on an exchange, you don't truly control it.",
+      },
+      {
+        term: "Private Key / Public Key",
+        definition:
+          "A public key is your crypto wallet address — shareable, like a bank account number. A private key is the cryptographic secret that proves ownership and authorizes transactions — never share it with anyone. Losing your private key means losing access to your funds permanently. There is no 'forgot password' option in crypto; this is both its greatest strength and greatest risk.",
+      },
+      {
+        term: "DeFi (Decentralized Finance)",
+        definition:
+          "Financial services — lending, borrowing, trading, earning yield — conducted through smart contracts on a blockchain, without banks or intermediaries. DeFi protocols like Uniswap, Aave, and Compound allow permissionless financial activity. While revolutionary in concept, DeFi carries significant risks: smart contract bugs, rug pulls, oracle failures, and extreme volatility have caused billions in losses.",
+      },
+      {
+        term: "NFT (Non-Fungible Token)",
+        definition:
+          "A unique digital token on a blockchain that represents ownership of a specific asset — digital art, music, collectibles, or virtual real estate. Unlike cryptocurrency, which is fungible (one BTC equals another BTC), NFTs are unique. The 2021 NFT boom saw enormous speculation; prices subsequently collapsed dramatically. The underlying technology has real potential applications, but the speculative market was unsustainable.",
+      },
+      {
+        term: "Staking",
+        definition:
+          "Locking cryptocurrency in a proof-of-stake blockchain network to help validate transactions, earning rewards in return — somewhat analogous to earning interest. Staking yields vary widely by asset and network conditions. Risks include: lockup periods during which you can't sell, price volatility of the staked asset, and smart contract risk on DeFi staking platforms.",
+      },
+      {
+        term: "Dollar-Cost Averaging (DCA) in Crypto",
+        definition:
+          "Investing a fixed amount in crypto at regular intervals (weekly, monthly) regardless of price, rather than trying to time the market. DCA reduces the impact of volatility — you buy more coins when prices are low and fewer when high. This strategy has been highly effective for Bitcoin over multi-year horizons and is generally recommended over attempting to trade crypto short-term.",
+      },
+      {
+        term: "Gas Fees",
+        definition:
+          "Transaction fees paid to network validators for processing transactions on Ethereum and similar blockchains. Gas fees fluctuate with network demand — they can be a few cents during quiet periods and tens of dollars during peak activity. High gas fees make small Ethereum transactions impractical and were a major driver of adoption of lower-fee competing blockchains.",
+      },
+      {
+        term: "HODL",
+        definition:
+          "Crypto slang originating from a misspelled 'hold' — meaning to hold cryptocurrency through volatility rather than selling. HODL has become a community philosophy emphasizing long-term conviction over short-term price movements. Empirically, long-term Bitcoin holders have consistently outperformed traders attempting to time the market, despite gut-wrenching drawdowns along the way.",
+      },
+      {
+        term: "Pump and Dump",
+        definition:
+          "A market manipulation scheme where the price of an asset is artificially inflated ('pumped') through coordinated buying and promotion, only to have the manipulators sell ('dump') at elevated prices, crashing the price and leaving other buyers with losses. Pump and dump schemes are extremely common in smaller, illiquid cryptocurrencies and in 'meme coins' promoted on social media. Avoid.",
+      },
+      {
+        term: "Critical Warning: Crypto Risk",
+        definition:
+          "Cryptocurrency is highly speculative. Most crypto assets have experienced drawdowns of 70–90% and many have gone to zero. Regulatory risk, exchange insolvency (as demonstrated by the FTX collapse in 2022), technical failures, and fraud are real, ongoing threats. Never invest more than you can afford to lose entirely. Never put emergency funds or retirement savings into crypto. Never invest because of social media hype or celebrity endorsements.",
+      },
+    ],
+  },
+  {
+    num: "03",
+    title: "Derivatives Explained",
+    terms: [
+      {
+        term: "What Is a Derivative?",
+        definition:
+          "A financial contract whose value is derived from an underlying asset — a stock, index, commodity, currency, or interest rate. Derivatives allow investors to speculate on price movements, hedge existing positions, or manage risk without owning the underlying asset directly. The global derivatives market is measured in hundreds of trillions of dollars in notional value and is the largest financial market in the world.",
+      },
+      {
+        term: "Futures Contract",
+        definition:
+          "An agreement to buy or sell an asset at a predetermined price at a future date. Futures are standardized contracts traded on exchanges. They are used by producers (farmers locking in crop prices), corporations (airlines hedging fuel costs), and speculators. Futures require margin — posting a fraction of the contract value — creating leverage that can amplify both gains and losses dramatically.",
+      },
+      {
+        term: "Options Contract",
+        definition:
+          "A contract giving the buyer the right — but not the obligation — to buy (call) or sell (put) an asset at a specified price (strike price) on or before a specific date (expiration). Options are powerful instruments for hedging, income generation, and speculation. Unlike futures, the maximum loss for an option buyer is limited to the premium paid.",
+      },
+      {
+        term: "Call Option",
+        definition:
+          "Gives the holder the right to buy an asset at the strike price before expiration. Buyers profit when the underlying asset's price rises above the strike price plus premium paid. Call options are often used to speculate on rising prices with limited capital at risk. Sellers of call options collect the premium but take on unlimited potential loss if the asset rises sharply.",
+      },
+      {
+        term: "Put Option",
+        definition:
+          "Gives the holder the right to sell an asset at the strike price before expiration. Put buyers profit when the underlying asset falls below the strike price minus the premium. Puts are commonly used as insurance (hedging) against a decline in a portfolio's value. A put option on stocks you own is functionally similar to buying insurance on your position.",
+      },
+      {
+        term: "Strike Price",
+        definition:
+          "The predetermined price at which an option contract can be exercised. For a call option, the underlying asset must be above the strike price for the option to have intrinsic value. For a put option, the asset must be below the strike price. Options at the strike price are 'at the money,' above are 'in the money' for calls, and below are 'in the money' for puts.",
+      },
+      {
+        term: "Premium",
+        definition:
+          "The price paid to purchase an options contract. The premium reflects the option's intrinsic value (how far in-the-money it is) plus time value (how long until expiration) plus implied volatility (market's expectation of future price movement). Higher volatility means higher premiums. Options buyers pay premiums; options sellers receive them.",
+      },
+      {
+        term: "Leverage",
+        definition:
+          "The use of borrowed capital or derivative contracts to control a larger position than your actual capital would normally allow. Leverage multiplies both gains and losses. A 10:1 leveraged position means a 5% move in the underlying creates a 50% gain or loss on invested capital. Leverage is one of the primary reasons individual traders lose money — it transforms manageable drawdowns into account-wiping events.",
+      },
+      {
+        term: "Margin",
+        definition:
+          "Borrowed money from a brokerage used to increase a position's size, or the collateral posted to hold a leveraged derivatives position. Margin accounts require maintaining a minimum balance; if losses reduce equity below the maintenance margin level, a margin call demands additional funds or forces position liquidation — often at the worst possible time.",
+      },
+      {
+        term: "Hedging",
+        definition:
+          "Using derivatives or other instruments to reduce risk in an existing position. For example, a farmer growing corn sells corn futures contracts to lock in a price, protecting against a price drop. A portfolio manager buys put options to limit downside. Hedging reduces potential gains in exchange for reducing potential losses — it's portfolio insurance, not a profit strategy.",
+      },
+      {
+        term: "Credit Default Swap (CDS)",
+        definition:
+          "A financial contract that functions like insurance against the default of a borrower. The buyer pays regular premiums; the seller pays out if the reference entity (a company or government) defaults on its debt. CDS contracts became notorious during the 2008 financial crisis — AIG's massive CDS exposure nearly brought down the global financial system, requiring a government bailout.",
+      },
+      {
+        term: "Derivatives Risk Disclosure",
+        definition:
+          "Derivatives are complex instruments and carry significant risk of loss, including losses exceeding initial investment. They are primarily used by institutional investors and sophisticated traders. Retail investors who do not fully understand the mechanics, risks, and tax implications of derivatives should avoid them entirely or seek professional guidance before trading. The majority of retail options traders lose money.",
+      },
+    ],
+  },
+  {
+    num: "04",
+    title: "Long vs. Short",
+    terms: [
+      {
+        term: "Going Long",
+        definition:
+          "The standard investment position — buying an asset with the expectation that its price will rise. When you buy stock, you are long that stock. Your maximum loss is limited to what you paid; your potential gain is theoretically unlimited. Long positions are the foundation of most retail investor portfolios.",
+      },
+      {
+        term: "Going Short (Short Selling)",
+        definition:
+          "A strategy to profit from a declining asset price. A short seller borrows shares, sells them immediately at the current market price, and hopes to buy them back later at a lower price — returning the borrowed shares and keeping the difference as profit. Short selling is far more complex and risky than going long.",
+      },
+      {
+        term: "Short Selling Mechanics",
+        definition:
+          "To short a stock, you borrow shares from your broker (who borrows them from other clients' accounts or its own inventory), sell them at the current price, and hold the proceeds. You owe the borrowed shares back. If the price falls, you buy shares at the lower price, return them, and profit. If the price rises, you must buy back at a higher price — a loss.",
+      },
+      {
+        term: "Borrowing Shares",
+        definition:
+          "Short selling requires a locate — confirmation that shares are available to borrow. 'Hard to borrow' stocks (heavily shorted, low float) have high borrowing fees that eat into potential profits. Shares can also be 'called back' by the lender at any time, forcing the short seller to cover immediately regardless of their position.",
+      },
+      {
+        term: "Margin Account Requirement",
+        definition:
+          "Short selling requires a margin account. You must maintain a minimum margin balance as collateral for the borrowed shares. If the stock rises significantly, your equity falls and you may receive a margin call requiring you to deposit more funds or close the position. This forced closure at a loss is a defining feature of short selling risk.",
+      },
+      {
+        term: "Short Interest",
+        definition:
+          "The percentage of a company's float (freely tradable shares) that has been sold short. High short interest (15%+) indicates significant market pessimism about a stock. It can also set up a short squeeze — when rising prices force short sellers to buy back shares, driving prices even higher in a self-reinforcing cycle.",
+      },
+      {
+        term: "Short Squeeze",
+        definition:
+          "When a heavily shorted stock's price rises rapidly, forcing short sellers to buy back shares to limit losses. This buying pressure drives the price even higher, triggering more short covering in a cascade. Short squeezes can cause explosive, rapid price movements in short periods. The 2021 GameStop situation is the most famous modern example.",
+      },
+      {
+        term: "GameStop (GME) — A Case Study",
+        definition:
+          "In January 2021, retail investors coordinating on Reddit's WallStreetBets forum collectively bought GameStop shares and call options, driving a massive short squeeze on institutional short sellers including hedge fund Melvin Capital. GME rose from roughly $20 to nearly $500 in weeks before collapsing. It demonstrated the power of retail coordination and the existential risk that short sellers face when a squeeze ignites.",
+      },
+      {
+        term: "Covering a Short",
+        definition:
+          "Buying back the shorted shares to close the position and return them to the lender. Covering is done when the trade is profitable (stock fell as expected) or as a risk management measure (stock rose unexpectedly). Covering a losing short position locks in the loss but stops the potential for further unlimited losses.",
+      },
+      {
+        term: "Unlimited Loss Potential",
+        definition:
+          "The most critical distinction between going long and going short: when you buy a stock, you can lose at most 100% of what you paid (the stock goes to zero). When you short a stock, there is theoretically no ceiling on how high the stock can go — meaning short sellers face theoretically unlimited losses. Stocks have risen 1,000%+ while heavily shorted, destroying short sellers in the process.",
+      },
+      {
+        term: "When Professionals Go Short",
+        definition:
+          "Professional short sellers typically target companies with accounting fraud, flawed business models, excessive debt, or misrepresented financials. Famous short sellers like Jim Chanos identified Enron's accounting fraud years before its collapse. Successful short selling requires deep fundamental research, timing, and the ability to survive temporary price rises against your position. It is extraordinarily difficult to do profitably over time.",
+      },
+      {
+        term: "Retail Investor Caution",
+        definition:
+          "Short selling is not appropriate for most retail investors. The combination of unlimited loss potential, margin requirements, borrowing costs, and the fundamental headwind of stock markets trending upward over time makes short selling a losing proposition for those without institutional-level research and risk management. Most retail traders who attempt short selling lose money.",
+      },
+    ],
+  },
+  {
+    num: "05",
+    title: "Economic Indicators",
+    terms: [
+      {
+        term: "GDP (Gross Domestic Product)",
+        definition:
+          "The total monetary value of all goods and services produced within a country in a given period. GDP is the primary measure of economic size and growth. Two consecutive quarters of negative GDP growth is the traditional definition of a recession. The U.S. GDP is approximately $27 trillion annually, making it the world's largest single economy.",
+      },
+      {
+        term: "Inflation (CPI)",
+        definition:
+          "The Consumer Price Index (CPI) measures the average change in prices paid by consumers for a basket of goods and services. Inflation erodes purchasing power over time — $100 today buys less than $100 bought a decade ago. The Federal Reserve targets 2% annual inflation as a sustainable level. The 2021–2023 inflation surge in the U.S. peaked at 9.1% and was the highest in 40 years.",
+      },
+      {
+        term: "Federal Funds Rate",
+        definition:
+          "The interest rate at which banks lend money to each other overnight, set by the Federal Reserve's Federal Open Market Committee (FOMC). This rate is the most influential short-term interest rate in the global economy — it affects everything from mortgage rates and car loans to corporate bond yields and savings account interest. Raising rates fights inflation; lowering rates stimulates economic activity.",
+      },
+      {
+        term: "The Federal Reserve (The Fed)",
+        definition:
+          "The central bank of the United States, operating independently within the government. The Fed has two statutory mandates: maximum employment and stable prices (2% inflation target). It controls monetary policy primarily through setting the federal funds rate and managing its balance sheet. Fed decisions and communications move global financial markets and are closely followed by every professional investor.",
+      },
+      {
+        term: "Interest Rates and Market Relationship",
+        definition:
+          "Rising interest rates generally hurt stock valuations (higher discount rates reduce the present value of future earnings), hurt bond prices (existing bonds paying lower rates become less attractive), increase borrowing costs for businesses and consumers, and strengthen the dollar. Falling rates do the opposite. The 2022 rate hiking cycle — the fastest since the 1980s — caused the worst simultaneous stock and bond decline in decades.",
+      },
+      {
+        term: "Yield Curve",
+        definition:
+          "A graph plotting the interest rates of bonds with identical credit quality across different maturity dates. Normally, the yield curve slopes upward — longer-term bonds pay higher yields to compensate for holding them longer. The shape of the yield curve reflects economic expectations and is one of the most watched macroeconomic signals.",
+      },
+      {
+        term: "Inverted Yield Curve",
+        definition:
+          "When short-term interest rates exceed long-term rates — an unusual condition that historically precedes recessions. An inverted yield curve (specifically when 2-year Treasury yields exceed 10-year yields) has preceded every U.S. recession of the past 50 years, though with variable lead times. The yield curve inverted significantly in 2022–2023 amid Fed rate hikes.",
+      },
+      {
+        term: "Recession",
+        definition:
+          "Broadly defined as two consecutive quarters of negative GDP growth. The National Bureau of Economic Research (NBER) makes official U.S. recession determinations using multiple indicators including employment, income, production, and sales. Recessions vary greatly in severity — from mild, brief contractions to the deep financial crises of 2008–2009 (Great Recession) and 2020 (COVID recession).",
+      },
+      {
+        term: "Unemployment Rate",
+        definition:
+          "The percentage of the labor force that is jobless and actively seeking work. The U.S. Bureau of Labor Statistics publishes the monthly unemployment report, which is among the most market-moving economic releases. 'Full employment' is generally considered around 4–5% unemployment — some level of joblessness always exists as people change careers or locations.",
+      },
+      {
+        term: "Consumer Confidence Index",
+        definition:
+          "A survey-based measure of how optimistic consumers feel about the economy and their personal financial situation. High consumer confidence correlates with increased spending, which drives roughly 70% of U.S. GDP. Sharp drops in consumer confidence often precede or accompany economic slowdowns. It is a forward-looking indicator rather than a measure of current conditions.",
+      },
+      {
+        term: "Quantitative Easing (QE)",
+        definition:
+          "A monetary policy tool where the Federal Reserve creates money to purchase financial assets (primarily Treasury bonds and mortgage-backed securities), expanding its balance sheet and injecting money into the financial system. QE is used when interest rates are near zero and more stimulus is needed. The Fed used massive QE programs during the 2008 financial crisis and the 2020 COVID pandemic.",
+      },
+      {
+        term: "Stagflation",
+        definition:
+          "A particularly difficult economic condition combining high inflation, high unemployment, and slow economic growth simultaneously — contradicting the typical relationship where inflation and unemployment move in opposite directions. The U.S. experienced stagflation during the 1970s following oil price shocks. It is considered one of the most challenging environments for monetary policy because the tools to fight inflation (raising rates) worsen unemployment.",
+      },
+      {
+        term: "Fiscal vs. Monetary Policy",
+        definition:
+          "Fiscal policy is government spending and taxation, controlled by Congress and the President. Monetary policy is management of the money supply and interest rates, controlled by the Federal Reserve. Stimulus programs (fiscal), tax cuts (fiscal), and interest rate changes (monetary) are the primary levers governments use to manage economic cycles. The interaction between the two — especially when they work at cross purposes — shapes market conditions profoundly.",
+      },
+    ],
+  },
+  {
+    num: "06",
+    title: "General Investing Principles",
+    terms: [
+      {
+        term: "Diversification",
+        definition:
+          "Spreading investments across different asset classes, sectors, geographies, and instruments to reduce the risk that any single investment can devastate your portfolio. A diversified portfolio might hold U.S. stocks, international stocks, bonds, and real estate. The core principle: don't put all your eggs in one basket. Diversification doesn't eliminate risk, but it is the closest thing to a free lunch in investing.",
+      },
+      {
+        term: "Asset Allocation",
+        definition:
+          "The strategic distribution of investments across different asset classes — stocks, bonds, cash, real estate, commodities. Research consistently shows that asset allocation, not individual security selection, is the primary driver of long-term portfolio returns. A common rule of thumb: subtract your age from 110 to determine your stock percentage (e.g., age 40 → 70% stocks, 30% bonds), though individual risk tolerance should guide the actual decision.",
+      },
+      {
+        term: "Risk Tolerance",
+        definition:
+          "Your capacity and willingness to endure investment losses without selling at the wrong time. Financial risk tolerance is both psychological (how you react emotionally to losing money) and practical (how long you have until you need the money). Investing more aggressively than your true risk tolerance virtually always leads to panic-selling at market bottoms — the worst possible outcome.",
+      },
+      {
+        term: "Time Horizon",
+        definition:
+          "The length of time you expect to hold an investment before needing the funds. Longer time horizons justify more risk — a 25-year-old investing for retirement at 65 has 40 years to recover from market downturns. Short-term money (needed within 1–2 years) should not be in stocks. The stock market has never experienced a 20-year period with a negative total return.",
+      },
+      {
+        term: "Compound Interest",
+        definition:
+          "Earning returns on both your original investment and on previously earned returns — interest on interest. Einstein allegedly called it the eighth wonder of the world. $10,000 growing at 10% annually becomes $17,000 in 6 years, $67,000 in 20 years, and $452,000 in 40 years. Starting early is exponentially more valuable than investing more later — time is the most powerful variable in wealth building.",
+      },
+      {
+        term: "Dollar-Cost Averaging (DCA)",
+        definition:
+          "Investing a fixed dollar amount at regular intervals regardless of market price. DCA removes the emotional burden of trying to time the market and automatically results in buying more shares when prices are low and fewer when high. Research consistently shows that most attempts at market timing underperform consistent DCA investing. Setting up automatic monthly investments is one of the highest-impact decisions an individual investor can make.",
+      },
+      {
+        term: "Tax-Advantaged Accounts: IRA and 401(k)",
+        definition:
+          "Individual Retirement Accounts (IRAs) and employer-sponsored 401(k) plans offer powerful tax benefits that dramatically increase long-term wealth accumulation. Traditional versions provide tax deductions now with taxes paid at withdrawal. Roth versions are funded with after-tax dollars but grow completely tax-free. Maximizing contributions to these accounts before investing in taxable accounts is almost universally recommended by financial planners.",
+      },
+      {
+        term: "Portfolio Rebalancing",
+        definition:
+          "Periodically buying and selling assets to restore your target asset allocation. As stocks rise relative to bonds, your portfolio drifts toward a higher stock percentage than intended. Annual or threshold-based rebalancing (when any asset drifts more than 5% from target) maintains your intended risk level and forces disciplined buying of underperformers and selling of outperformers.",
+      },
+      {
+        term: "Expense Ratios",
+        definition:
+          "The annual fee charged by a fund, expressed as a percentage of assets under management. A 1% expense ratio on $100,000 costs $1,000 per year — and those costs compound over time. Index funds typically charge 0.03–0.20%. Actively managed funds typically charge 0.5–1.5%. Over 30 years, the difference between a 0.05% and a 1.0% expense ratio on a $50,000 investment is over $100,000 in lost returns.",
+      },
+      {
+        term: "Avoiding Emotional Investing",
+        definition:
+          "The single greatest threat to individual investor returns is not market crashes or poor security selection — it is behavioral: panic-selling during downturns and chasing performance during rallies. DALBAR's annual studies consistently show that the average equity fund investor significantly underperforms the funds they invest in, primarily because of ill-timed buying and selling. A written investment policy that you commit to before markets move is the most effective defense.",
+      },
+      {
+        term: "Emergency Fund Before Investing",
+        definition:
+          "Financial planners uniformly recommend establishing 3–6 months of living expenses in an accessible savings account before investing. Without this buffer, an unexpected job loss or medical expense forces you to liquidate investments — potentially at a loss, at the worst possible time. The emergency fund is the foundation upon which all investment activity rests.",
+      },
+      {
+        term: "Never Invest Borrowed Money",
+        definition:
+          "Investing with borrowed money (outside of specific, understood margin strategies) is one of the most dangerous financial decisions a person can make. If the investment loses value, you still owe the full amount borrowed plus interest. Markets can and do drop 30–50%, and they can stay depressed for years. Borrowed money creates forced selling at the worst times. This principle applies to home equity loans, credit cards, personal loans, and crypto leverage platforms.",
+      },
+      {
+        term: "Due Diligence",
+        definition:
+          "The process of thoroughly researching an investment before committing capital. For stocks: read financial statements, understand the business model, assess competitive position and management quality, evaluate valuation. For funds: review historical performance, expense ratios, manager tenure, and strategy. The higher the potential return promised, the more scrutiny is required — extraordinary returns almost always come with extraordinary (and often hidden) risks.",
+      },
+    ],
+  },
+];
+
+function FinancialAssistantPage() {
+  return (
+    <motion.div
+      key="financial"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="max-w-3xl mx-auto px-6 md:px-10 py-10"
+    >
+      {/* Page header */}
+      <header className="mb-12">
+        <div className="flex items-center gap-3 mb-4">
+          <DollarSign
+            size={16}
+            style={{ color: "oklch(var(--handbook-amber))" }}
+          />
+          <span
+            className="font-mono-code text-xs font-semibold tracking-widest uppercase"
+            style={{ color: "oklch(var(--handbook-amber))" }}
+          >
+            Financial Reference
+          </span>
+          <div
+            className="h-px flex-1"
+            style={{ background: "oklch(var(--handbook-rule))" }}
+          />
+        </div>
+        <h1 className="font-display text-4xl md:text-5xl font-semibold text-foreground mb-5 leading-tight">
+          Financial Assistant
+        </h1>
+        <p
+          className="text-base leading-relaxed max-w-2xl"
+          style={{ color: "oklch(var(--handbook-subtitle-text))" }}
+        >
+          A comprehensive reference covering stock market fundamentals,
+          cryptocurrency terms and advice, derivatives, long vs. short
+          strategies, economic indicators, and general investing principles —
+          plain-language explanations for every term.
+        </p>
+        <div
+          className="mt-8 h-px"
+          style={{ background: "oklch(var(--handbook-rule))" }}
+        />
+      </header>
+
+      {/* Categories */}
+      <div className="space-y-14">
+        {FINANCIAL_CATEGORIES.map((category, catIdx) => (
+          <motion.section
+            key={category.num}
+            data-ocid={`financial.category.item.${catIdx + 1}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: catIdx * 0.06, duration: 0.3 }}
+          >
+            {/* Category header */}
+            <div className="flex items-baseline gap-3 mb-6">
+              <span
+                className="font-mono-code text-xs font-medium shrink-0"
+                style={{ color: "oklch(var(--handbook-section-num))" }}
+                aria-hidden="true"
+              >
+                {category.num}
+              </span>
+              <h2 className="font-display text-2xl font-semibold text-foreground leading-snug">
+                {category.title}
+              </h2>
+            </div>
+
+            {/* Terms */}
+            <div className="space-y-6 pl-9">
+              {category.terms.map((item, termIdx) => (
+                <motion.div
+                  key={item.term}
+                  data-ocid={`financial.term.item.${termIdx + 1}`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: catIdx * 0.06 + termIdx * 0.03,
+                    duration: 0.25,
+                  }}
+                >
+                  <h3
+                    className="font-display text-base font-semibold mb-1.5 leading-snug"
+                    style={{ color: "oklch(var(--handbook-amber))" }}
+                  >
+                    {item.term}
+                  </h3>
+                  <p
+                    className="handbook-body-text leading-[1.85] tracking-[0.01em]"
+                    style={{ color: "oklch(var(--handbook-body-text))" }}
+                  >
+                    {item.definition}
+                  </p>
+                  {termIdx < category.terms.length - 1 && (
+                    <div
+                      className="mt-5 h-px"
+                      style={{
+                        background: "oklch(var(--handbook-rule) / 0.4)",
+                      }}
+                    />
+                  )}
+                </motion.div>
+              ))}
+            </div>
+
+            {catIdx < FINANCIAL_CATEGORIES.length - 1 && (
+              <div
+                className="mt-10 h-px"
+                style={{ background: "oklch(var(--handbook-rule))" }}
+              />
+            )}
+          </motion.section>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ----------------------------------------------------------------
 // Top Tab Bar
 // ----------------------------------------------------------------
 interface TabBarProps {
@@ -1210,6 +2102,18 @@ function TabBar({ activeTab, onTabChange }: TabBarProps) {
       label: "Checklist",
       icon: <CheckSquare size={14} />,
       ocid: "nav.checklist.tab",
+    },
+    {
+      id: "calendar",
+      label: "Calendar",
+      icon: <CalendarDays size={14} />,
+      ocid: "calendar.tab",
+    },
+    {
+      id: "financial",
+      label: "Financial Assistant",
+      icon: <DollarSign size={14} />,
+      ocid: "nav.financial.tab",
     },
   ];
 
@@ -1616,6 +2520,58 @@ export default function App() {
             <ChecklistPage key="checklist" />
           </AnimatePresence>
           <footer className="px-6 md:px-10 py-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap max-w-xl mx-auto">
+            <span>HVAC &amp; Insulation Handbook — Field Reference</span>
+            <span>
+              © {year}. Built with ❤ using{" "}
+              <a
+                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-muted-foreground transition-colors"
+              >
+                caffeine.ai
+              </a>
+            </span>
+          </footer>
+        </div>
+      )}
+
+      {/* ── Content: Calendar view ────────────────────────────── */}
+      {activeTab === "calendar" && (
+        <div
+          className="flex-1 overflow-y-auto"
+          style={{ height: contentHeight }}
+        >
+          <AnimatePresence mode="wait">
+            <CalendarPage key="calendar" />
+          </AnimatePresence>
+          <footer className="px-6 md:px-10 py-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap max-w-2xl mx-auto">
+            <span>HVAC &amp; Insulation Handbook — Field Reference</span>
+            <span>
+              © {year}. Built with ❤ using{" "}
+              <a
+                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-muted-foreground transition-colors"
+              >
+                caffeine.ai
+              </a>
+            </span>
+          </footer>
+        </div>
+      )}
+
+      {/* ── Content: Financial Assistant view ─────────────────── */}
+      {activeTab === "financial" && (
+        <div
+          className="flex-1 overflow-y-auto"
+          style={{ height: contentHeight }}
+        >
+          <AnimatePresence mode="wait">
+            <FinancialAssistantPage key="financial" />
+          </AnimatePresence>
+          <footer className="px-6 md:px-10 py-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap max-w-3xl mx-auto">
             <span>HVAC &amp; Insulation Handbook — Field Reference</span>
             <span>
               © {year}. Built with ❤ using{" "}

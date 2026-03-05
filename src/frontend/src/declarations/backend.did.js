@@ -27,7 +27,9 @@ export const SearchResult = IDL.Record({ 'id' : IDL.Nat, 'title' : IDL.Text });
 
 export const idlService = IDL.Service({
   'getAllSections' : IDL.Func([], [IDL.Vec(SectionSummary)], ['query']),
+  'getCalendarNotes' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
   'getSection' : IDL.Func([IDL.Nat], [Section], ['query']),
+  'saveCalendarNotes' : IDL.Func([IDL.Vec(IDL.Text)], [], []),
   'searchSections' : IDL.Func([IDL.Text], [IDL.Vec(SearchResult)], ['query']),
 });
 
@@ -50,7 +52,9 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     'getAllSections' : IDL.Func([], [IDL.Vec(SectionSummary)], ['query']),
+    'getCalendarNotes' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
     'getSection' : IDL.Func([IDL.Nat], [Section], ['query']),
+    'saveCalendarNotes' : IDL.Func([IDL.Vec(IDL.Text)], [], []),
     'searchSections' : IDL.Func([IDL.Text], [IDL.Vec(SearchResult)], ['query']),
   });
 };
