@@ -1338,22 +1338,12 @@ export default function App() {
 
           {/* Logo & title */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <div
-              className="w-7 h-7 rounded flex items-center justify-center shrink-0"
-              style={{ background: "oklch(var(--handbook-amber) / 0.15)" }}
-            >
-              <BookOpen
-                size={14}
-                style={{ color: "oklch(var(--handbook-amber))" }}
-              />
-            </div>
-            <span className="font-display font-semibold text-sm md:text-base text-foreground leading-tight hidden sm:block">
-              HVAC &amp; Insulation{" "}
-              <span className="text-amber hidden md:inline">Handbook</span>
-            </span>
-            <span className="font-display font-semibold text-sm text-foreground sm:hidden">
-              Handbook
-            </span>
+            <img
+              src="/assets/generated/county-comfort-logo-transparent.dim_400x120.png"
+              alt="County Comfort Services"
+              className="h-9 w-auto object-contain"
+              style={{ maxWidth: "220px" }}
+            />
           </div>
 
           {/* Spacer */}
@@ -1521,7 +1511,7 @@ export default function App() {
 
             {/* Footer */}
             <footer className="px-6 md:px-10 py-8 mt-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap">
-              <span>HVAC &amp; Insulation Handbook — Field Reference</span>
+              <span>County Comfort Services — Field Reference</span>
               <span>
                 © {year}. Built with ❤ using{" "}
                 <a
