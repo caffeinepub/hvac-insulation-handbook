@@ -106,7 +106,7 @@ function appendProTips(section: Section): Section {
 }
 
 export function useGetAllSections() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<SectionSummary[]>({
     queryKey: ["sections"],
     queryFn: async () => {
@@ -114,12 +114,12 @@ export function useGetAllSections() {
       const sections = await actor.getAllSections();
       return applySection7Override(sections);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor,
   });
 }
 
 export function useGetSection(id: bigint | null) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<Section | null>({
     queryKey: ["section", id?.toString()],
     queryFn: async () => {
@@ -128,18 +128,18 @@ export function useGetSection(id: bigint | null) {
       const section = await actor.getSection(id);
       return appendProTips(section);
     },
-    enabled: !!actor && !isFetching && id !== null,
+    enabled: !!actor && id !== null,
   });
 }
 
 export function useSearchSections(query: string) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<SearchResult[]>({
     queryKey: ["search", query],
     queryFn: async () => {
       if (!actor || !query.trim()) return [];
       return actor.searchSections(query.trim());
     },
-    enabled: !!actor && !isFetching && query.trim().length > 0,
+    enabled: !!actor && query.trim().length > 0,
   });
 }

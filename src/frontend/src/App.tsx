@@ -1,9 +1,8 @@
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen,
+  CheckSquare,
   ChevronRight,
   Clock,
   Home,
@@ -13,18 +12,263 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { SectionSummary } from "./backend.d";
-import {
-  useGetAllSections,
-  useGetSection,
-  useSearchSections,
-} from "./hooks/useQueries";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // ----------------------------------------------------------------
 // Types
 // ----------------------------------------------------------------
-type TabView = "handbook" | "history" | "sales_tips" | "in_home_process";
+type TabView =
+  | "handbook"
+  | "history"
+  | "sales_tips"
+  | "in_home_process"
+  | "checklist";
+
+interface Subsection {
+  subtitle: string;
+  body: string;
+}
+
+interface HandbookSection {
+  id: number;
+  title: string;
+  description: string;
+  subsections: Subsection[];
+}
+
+// ----------------------------------------------------------------
+// Static Handbook Sections (fully self-contained, no backend needed)
+// ----------------------------------------------------------------
+const HANDBOOK_SECTIONS: HandbookSection[] = [
+  {
+    id: 1,
+    title: "Heat Pump Condensers (New York)",
+    description:
+      "Outdoor unit components, climate considerations, refrigerant types, sizing, installation requirements, maintenance.",
+    subsections: [
+      {
+        subtitle: "Outdoor Unit Components",
+        body: "The condenser is the outdoor unit in a split heat pump system. It houses the compressor, condenser/evaporator coil, fan motor, and refrigerant reversing valve. In heating mode, the coil absorbs heat from outdoor air; in cooling mode, it rejects heat. The compressor is the heart of the system — it circulates refrigerant and is the most expensive component to replace. Scroll compressors are the standard in residential and light commercial equipment; inverter-driven variable-speed compressors are now common in cold-climate units and offer dramatically better part-load efficiency and quieter operation. Fan motors drive the condenser fan, which moves air across the coil. Variable-speed fan motors are increasingly common and contribute to both efficiency and low-ambient performance. The reversing valve is a solenoid-operated valve that shifts the direction of refrigerant flow between heating and cooling modes — it is a common failure point and should be checked whenever the system heats or cools in the wrong season.",
+      },
+      {
+        subtitle: "NY Climate Considerations",
+        body: "New York's climate creates unique demands on heat pump condensers. Temperatures can drop to 0°F or below in upstate regions and occasionally in the outer boroughs, while Long Island and coastal areas are somewhat milder. Standard heat pumps lose capacity as outdoor temperatures drop, and early-generation units were essentially ineffective below 15–20°F. Modern cold-climate heat pumps (defined by NEEP as maintaining rated capacity at 5°F and having minimum capacity rated at -13°F) have changed this picture entirely. Always specify cold-climate rated equipment for any NY installation. Defrost cycles are essential — the outdoor coil will ice over during heating mode. Check that the defrost board is functional and that the defrost termination thermostat is properly positioned. In coastal areas with salt air, coil corrosion is accelerated — look for units with coated or treated coils. Unit placement matters: keep condensers elevated above expected snow accumulation (typically 18–24 inches minimum on a wall bracket or pad riser), with unobstructed airflow clearances and away from prevailing winter winds.",
+      },
+      {
+        subtitle: "Refrigerant Types",
+        body: "Most units installed from roughly 2010 through 2024 use R-410A refrigerant, which operates at higher pressures than its predecessor R-22. R-410A has no ozone depletion potential but is a potent greenhouse gas with a GWP of approximately 2,088. Under the AIM Act, R-410A is being phased down beginning in 2025. New equipment is transitioning to lower-GWP refrigerants: R-32 (GWP ~675), R-454B (GWP ~466, used by Carrier as 'Puron Advance'), and R-290 (propane, GWP of 3, used in some smaller units). Technicians must understand that R-32 is mildly flammable (A2L classification), and R-290 is highly flammable (A3) — new safety protocols, tools, and potentially licensing requirements apply. Do not mix refrigerants or attempt to retrofit older R-22 systems with R-410A drop-ins without verifying compatibility.",
+      },
+      {
+        subtitle: "Sizing & Installation",
+        body: "Correct sizing is critical. An undersized condenser cannot meet the heating load in design-condition weather; an oversized unit short-cycles, reducing humidity control and equipment life. Manual J load calculations should be the basis for sizing decisions, not rules of thumb. In NY, pay attention to the NEEP cold-climate heat pump directory for verified low-temperature capacity ratings — nameplate tons at 47°F does not tell you what the unit will do at 17°F or 5°F. Installation requirements include: minimum clearances (front, sides, top) per manufacturer specs; concrete or composite pad or wall brackets rated for the unit weight; electrical disconnect within sight of the unit; proper line set sizing and insulation; and vibration isolation between unit and structure. NY requires permits for new installations and replacements — confirm local jurisdiction requirements.",
+      },
+      {
+        subtitle: "Maintenance",
+        body: "Annual maintenance should include: cleaning the condenser coil (gentle coil cleaner, low-pressure rinse — never high-pressure wash which bends fins); checking refrigerant charge via superheat and subcooling measurements; inspecting the reversing valve solenoid and testing operation; checking capacitor microfarad ratings (start and run capacitors degrade before failure); inspecting electrical connections, contacts, and contactor condition; verifying defrost operation; testing low ambient controls if installed; and documenting system pressures and temperatures for trend tracking. In NY, coil cleaning is especially important in urban environments where debris, cottonwood seeds, and air pollution foul the coil faster than in suburban settings. Bent fins should be straightened with a fin comb to restore airflow.",
+      },
+      {
+        subtitle: "Pro Tips & Commonly Overlooked",
+        body: "One of the most overlooked issues with heat pump condensers in NY is improper refrigerant charge — many techs blame the compressor when low charge is the real culprit. Always verify superheat and subcooling before condemning a compressor. Check that the defrost board is functioning correctly; a stuck defrost relay will keep the unit in defrost and cause ice buildup even in mild weather. Verify that the reversing valve is fully shifting — a partially stuck valve causes complaints of poor heating or cooling with no obvious fault code. Don't overlook dirty or blocked condenser coils; even partial fouling significantly reduces efficiency. In NY winters, make sure the unit is elevated above typical snow accumulation levels — units sitting in ice will short-cycle and trip on low pressure. Always check discharge line temperature as a quick compressor health indicator.",
+      },
+    ],
+  },
+  {
+    id: 2,
+    title: "Heat Pump Air Handlers (New York)",
+    description:
+      "Indoor unit components, coil types, blower motors, NY-specific installation, common issues.",
+    subsections: [
+      {
+        subtitle: "Indoor Unit Components",
+        body: "The air handler is the indoor half of the split heat pump system. It contains the evaporator/condenser coil (which serves both functions depending on season), the blower assembly, the electric auxiliary heat section, the expansion device, and the control board. In heating mode, hot refrigerant from the outdoor unit condenses in the indoor coil and releases heat into the airstream. In cooling mode, cold refrigerant evaporates in the coil, absorbing heat and humidity from the return air. The air handler also typically houses electric strip heaters — these are resistance heaters that supplement the heat pump when outdoor temperatures are extreme or when the heat pump is in defrost. Strip heaters are staged and controlled by the thermostat; proper staging is critical for both comfort and electrical load management.",
+      },
+      {
+        subtitle: "Coil Types",
+        body: "Most residential air handlers use aluminum fin / copper tube coil construction, though all-aluminum coils (microchannel design) are increasingly common and offer better corrosion resistance. Coil face area and circuit design determine airflow resistance and refrigerant distribution — a coil that is too small for the airflow will have high air-side pressure drop, reducing system efficiency and potentially causing freeze-ups. Always verify coil match to the outdoor unit — manufacturers publish matched system efficiency ratings, and mismatched equipment is a common source of performance complaints. In NY, formicary corrosion (a pitting pattern caused by formic acid from volatile organic compounds common in newer construction) affects copper tube coils. If a coil develops pinhole leaks and the home has new flooring, cabinets, or cleaning products present, suspect formicary corrosion — aluminum coils are immune.",
+      },
+      {
+        subtitle: "Blower Motors",
+        body: "Modern air handlers use either PSC (permanent split capacitor) or ECM (electronically commutated motor) blower motors. ECM motors are dramatically more efficient — typically using 50–75% less energy than PSC motors at comparable airflow — and are required under current federal efficiency standards for most residential air handlers. ECM motors also maintain more consistent airflow across varying external static pressure (duct resistance), which matters significantly in NY homes with older, undersized ductwork. When diagnosing airflow complaints, verify motor type and speed settings. ECM motors can be programmed to different airflow profiles; factory defaults are not always appropriate for the installed duct system. Variable-speed ECM motors (as opposed to multi-speed ECM) allow the system to modulate airflow continuously, providing quieter operation and better humidity control.",
+      },
+      {
+        subtitle: "NY-Specific Installation",
+        body: "NY installations must account for: condensate disposal (drain line must comply with local plumbing code; condensate pump required in many basement installs; use of a secondary drain pan with float switch in attic or finished space locations); ductwork insulation requirements (NY energy code requires insulation on ducts outside conditioned space — R-6 minimum, R-8 preferred); filter access (NY energy code requires serviceable filters in accessible locations); and electrical requirements (NEC article 440 governs HVAC electrical; NY may have local amendments). In NYC specifically, Department of Buildings requirements add additional inspection and permit obligations. For installations in existing homes, verify that the existing duct system is adequately sized — a new, correctly sized air handler connected to undersized or leaky ductwork will underperform regardless of equipment quality.",
+      },
+      {
+        subtitle: "Common Issues",
+        body: "Frozen coils are a frequent complaint and have multiple causes: low refrigerant charge, insufficient airflow (dirty filter, blocked return, closed registers, undersized ducts), low outdoor temperatures during cooling season, or an oversized system running long cycles at very low load. Always identify the root cause before clearing ice. Airflow restrictions account for the majority of air handler performance complaints — check filter condition, verify all return air grilles are unobstructed, and measure static pressure before diagnosing refrigerant issues. Control board failures are more common than they should be, often caused by power surges, improper grounding, or water from condensate drips. When a control board fails, check the installation quality before assuming manufacturing defect.",
+      },
+      {
+        subtitle: "Pro Tips & Commonly Overlooked",
+        body: "Restricted airflow is the most commonly missed cause of poor performance in air handlers. Always check static pressure across the coil and at the unit — high static kills efficiency and can freeze the coil. Dirty evaporator coils are frequently overlooked, especially on units that haven't had filter changes. A clogged condensate drain will trip the safety float switch and shut the unit down — this is often misdiagnosed as an electrical or control issue. Check that auxiliary/emergency heat is wired and staged correctly; many installs leave aux heat unconfigured. On variable-speed air handlers, verify that the ECM motor is receiving the correct control signal — a failed communication wire causes the blower to run at wrong speeds. Inspect the filter rack for bypass air around the filter edges, which allows dirt to coat the coil.",
+      },
+    ],
+  },
+  {
+    id: 3,
+    title: "Thermostats",
+    description:
+      "Types, wiring, programming, and compatibility information for heat pumps and dual-fuel systems.",
+    subsections: [
+      {
+        subtitle: "Thermostat Types",
+        body: "Thermostats fall into four broad categories: electromechanical (mercury bulb/bimetallic strip — still found in older NY homes, no longer installed), single-stage electronic (simple on/off, adequate for single-stage systems), multi-stage/heat pump thermostats (required for heat pump systems — must distinguish between compressor stages and auxiliary/emergency heat), and smart/communicating thermostats (Wi-Fi enabled, learning algorithms, remote access, utility demand response participation). For heat pump installations, the thermostat must be heat-pump-specific — a standard heating/cooling thermostat will not correctly stage the system and will miscontrol auxiliary heat. Communicating thermostats (using proprietary protocols like Daikin, Mitsubishi, or Carrier's system-bus communication) offer additional diagnostics and often tighter control over variable-speed systems.",
+      },
+      {
+        subtitle: "Wiring",
+        body: "The standard residential thermostat wiring convention uses letter designations: R = 24VAC power (Rh = heating transformer, Rc = cooling transformer, R = combined); C = common (return to transformer — essential for smart thermostats and reliable operation); Y = compressor/cooling call; Y2 = second stage cooling; G = fan/blower call; W = heating call (gas/oil/electric); W2 = second stage heat or auxiliary heat; O = reversing valve (energized in cooling — most brands); B = reversing valve (energized in heating — Carrier/Bryant). On heat pump systems, the O or B terminal controls the reversing valve — the most critical wiring decision. Getting this wrong causes the system to heat when it should cool and vice versa. Always identify the equipment brand and verify whether O or B is used before completing the wiring.",
+      },
+      {
+        subtitle: "Programming",
+        body: "Modern smart thermostats offer scheduling, geofencing, learning, and remote access. For maximum energy savings in NY, use setback temperatures: 68°F daytime heating, 65°F overnight, 60°F when unoccupied. However, setback schedules interact poorly with heat pump systems — large temperature recoveries force the system into auxiliary/emergency heat, which is far less efficient than maintaining a moderate setpoint. For heat pump homes, use modest setbacks (2–3°F maximum) or consider smart thermostats with 'heat pump optimization' modes that recover setpoints slowly using only the compressor. Dual-fuel systems (heat pump + gas/oil backup) should be programmed with a balance point lockout temperature — typically 35–40°F — below which the gas/oil furnace takes over and the heat pump is locked out.",
+      },
+      {
+        subtitle: "Compatibility",
+        body: "Thermostat compatibility issues are extremely common in NY service work, particularly with older equipment, heat pump systems, and hybrid setups. Key compatibility checks: Does the system need a C-wire? (Most smart thermostats require one; use an add-a-wire adapter kit if not present — do not use the G wire as a common). Is the system heat-pump or conventional? (Using a conventional thermostat on a heat pump causes reversing valve and auxiliary heat staging errors). Is the system single-stage or multi-stage? (A single-stage thermostat on a two-stage compressor locks the compressor in high stage, wasting energy and causing comfort complaints). Is voltage correct? (Most residential is 24VAC; millivolt systems used with gas fireplaces and some older gravity furnaces are incompatible with standard thermostats). Always check the old thermostat wiring photo before disconnecting anything.",
+      },
+      {
+        subtitle: "Pro Tips & Commonly Overlooked",
+        body: "The C-wire (common wire) is the most frequent source of thermostat problems — without a stable 24V common, smart thermostats behave erratically or drain battery power. Always verify C-wire presence and continuity before replacing a thermostat. On heat pump systems, confirm the O/B wire is set correctly for the equipment brand — Carrier/Bryant use B (energized in heating), most others use O (energized in cooling). A misset O/B will cause the system to heat when it should cool and vice versa. Check for loose low-voltage connections at the air handler terminal board — these corrode over time and cause intermittent faults. Verify thermostat location isn't near a supply register, exterior wall, or in direct sunlight, which causes false readings. On dual-fuel systems, confirm the balance point (outdoor lockout temperature) is set correctly to prevent simultaneous gas and heat pump operation.",
+      },
+    ],
+  },
+  {
+    id: 4,
+    title: "Boilers (Gas/Oil)",
+    description:
+      "Boiler types, components, operation, code requirements, and maintenance information specific to New York.",
+    subsections: [
+      {
+        subtitle: "Boiler Types",
+        body: "New York has one of the most diverse boiler landscapes in the country, reflecting its dense, aging housing stock. Single-pipe steam systems dominate the pre-1950 building inventory, particularly in NYC and older upstate cities. These systems use a single pipe for both steam supply and condensate return — a design that requires careful pitch, correct radiator air vent sizing, and precise pressure control (typically 0.5–2.0 PSI). Two-pipe steam systems are more common in larger buildings and offer better control, though they require functional steam traps throughout the distribution system. Hot water (hydronic) systems, which circulate heated water through radiators or baseboard convectors, are the modern standard and the basis for virtually all new boiler installations. Combination boilers ('combi boilers') provide both space heating and domestic hot water from a single compact unit — popular in renovation projects where space is limited.",
+      },
+      {
+        subtitle: "Components",
+        body: "A residential boiler consists of: the heat exchanger (where combustion gases transfer heat to water), the burner assembly (nozzle, igniter, combustion air fan), the gas valve or fuel pump, the aquastat/limit controls, the expansion tank (absorbs volume changes as water heats and cools — a waterlogged expansion tank is a very common service issue), the circulator pump(s), the pressure/temperature relief valve (P/T relief — a critical safety device, must be correctly sized and piped to a safe discharge location), and the condensate system on high-efficiency (90%+) boilers. Modern boilers add modulating gas valves, outdoor reset controls, and communicating controls for optimized efficiency.",
+      },
+      {
+        subtitle: "Operation",
+        body: "Boiler operation begins with a call for heat from the thermostat. The control system verifies safe conditions (water pressure, limit thermostat, low water cutoff) before energizing the burner. On gas boilers, the gas valve opens and the igniter (hot surface or direct spark) lights the burner. Combustion gases travel through the heat exchanger, heating the water in the system. The circulator pump(s) move hot water to the distribution system — radiators, baseboards, radiant floor loops, or fan coil units. On steam systems, water boils to produce steam, which rises through the piping by pressure differential. Proper steam boiler operation depends on correct water level, minimal pressure, and properly functioning air vents — problems with any of these cause uneven heat, water hammer, or no heat.",
+      },
+      {
+        subtitle: "NY Code Requirements",
+        body: "New York State follows the Uniform Fire Prevention and Building Code (Uniform Code) for residential boiler installations. Key requirements include: gas piping must comply with NFPA 54 / ANSI Z223.1; oil piping and tank installation must comply with NFPA 31; combustion air must be provided per NFPA 54 for confined spaces; venting must comply with the manufacturer's installation instructions and applicable standards (Category I-IV for gas, UL 726 for oil); pressure relief valves must be set at the maximum allowable working pressure and piped to discharge within 6 inches of the floor; boilers must be listed and labeled by a nationally recognized testing laboratory. NYC adds Local Law requirements and DEP restrictions on fuel oil sulfur content and eventual phaseout of heavy fuel oil (No. 4 and No. 6) in buildings.",
+      },
+      {
+        subtitle: "Maintenance",
+        body: "Annual boiler maintenance should include: oil-fired: replace nozzle, oil filter, and fuel strainer; clean combustion chamber; check and adjust electrodes; perform combustion analysis (CO2, O2, CO, net stack temperature, smoke spot); check heat exchanger integrity. Gas-fired: inspect burner assembly; clean if needed; verify gas pressure at manifold; test safety controls; inspect heat exchanger for cracks or corrosion; verify venting integrity and termination clearances; test P/T relief valve operation. All boilers: verify correct water pressure (typically 12–15 PSI cold, rising to 20–25 PSI at operating temperature); check and service expansion tank; inspect and test low water cutoff; verify circulator pump operation; bleed air from radiators and air separators; test and inspect all zone valves.",
+      },
+      {
+        subtitle: "Pro Tips & Commonly Overlooked",
+        body: "Air in the system is one of the most common and overlooked boiler problems — it causes banging, gurgling, and uneven heat distribution. Always bleed radiators and check the auto-vent after any work. Low water cutoff (LWCO) devices are frequently dirty or stuck — a failed LWCO will shut the boiler down and is often misread as a burner or ignition problem. Check expansion tank pressure and bladder condition; a waterlogged expansion tank causes pressure relief valves to weep and the system to over-pressurize. On oil boilers, a dirty or worn nozzle is the leading cause of hard starts, soot buildup, and smoke — replace the nozzle annually. Verify flue draft and combustion air supply; insufficient combustion air causes incomplete combustion and carbon monoxide risk. On steam systems, check steam trap operation — failed traps that are stuck open cause water hammer and uneven heat throughout the building.",
+      },
+    ],
+  },
+  {
+    id: 5,
+    title: "Furnaces (Gas/Oil)",
+    description:
+      "Heat exchanger, burner, blower, controls, flue venting, code requirements, efficiency ratings, common issues.",
+    subsections: [
+      {
+        subtitle: "Components",
+        body: "A forced-air furnace consists of four major subsystems: the heat exchanger assembly (where combustion products heat the airstream without mixing combustion gases with supply air), the burner/ignition assembly, the blower and air distribution system, and the safety/control system. The heat exchanger is the most safety-critical component — a cracked or failed heat exchanger allows carbon monoxide to enter the living space. Inspecting heat exchangers for cracks, holes, or separation is a mandatory part of every furnace service. On 80% AFUE (standard efficiency) furnaces, the heat exchanger is a series of stamped steel or tubular sections; on 90%+ AFUE (high efficiency/condensing) furnaces, there is a primary heat exchanger and a secondary (condensing) heat exchanger that extracts additional heat from the flue gases, causing condensate to form.",
+      },
+      {
+        subtitle: "Burners",
+        body: "Gas furnace burners are either inshot (jets of gas fire into a tubular heat exchanger section) or upshot design. The gas valve controls pressure and volume of fuel; manifold pressure should be checked at each service. Ignition is typically via hot surface igniter (silicon carbide or silicon nitride) — these are fragile and degrade over time, often causing intermittent no-heat calls as they age. Direct spark igniters are less common in residential equipment. Oil furnace burners use a gun-type atomizing burner: an oil pump pressurizes fuel oil, which is sprayed through a nozzle and atomized into a fine mist that is ignited by an electric spark. Nozzle condition, electrode gap and position, oil pressure, and combustion air adjustment are all critical to clean, efficient combustion. A dirty or worn nozzle causes soot, hard starts, and smoke — replace annually.",
+      },
+      {
+        subtitle: "Blower & Controls",
+        body: "The furnace blower circulates air through the heat exchanger and into the duct system. Blower performance directly affects heat exchanger longevity — insufficient airflow overheats the heat exchanger, accelerating failure. Control systems on modern furnaces include the main control board (integrates all safety and sequencing functions), the inducer control (manages combustion air), pressure switches (verify inducer operation before allowing burner to fire), and limit switches (high temperature safety). On 90%+ furnaces, the combustion process is controlled more tightly — induced draft combustion, sealed combustion air, and pressure-switch monitoring of the condensate trap and secondary heat exchanger.",
+      },
+      {
+        subtitle: "Flue Venting",
+        body: "Venting requirements differ dramatically between 80% and 90%+ furnaces. Standard 80% furnaces use Category I venting (negative pressure, flue gas temperatures above dew point) — typically B-vent (double-wall galvanized) rising vertically through the structure to a chimney or direct-to-roof termination. This vent must be correctly sized, sloped, and supported; common errors include undersized vent connectors, horizontal runs that are too long, inadequate rise, and improper chimney liner sizing. High-efficiency 90%+ furnaces use PVC or CPVC direct-vent (Category IV) piping — two plastic pipes, one for combustion air intake and one for flue gas exhaust, typically exiting through the side wall. Installation errors include insufficient termination clearances, incorrect pipe materials, blocked drainage, and inadequate condensate trap depth for the inducer's negative pressure.",
+      },
+      {
+        subtitle: "Efficiency Ratings",
+        body: "AFUE (Annual Fuel Utilization Efficiency) measures what percentage of fuel energy ends up as useful heat. Standard furnaces run 80% AFUE — meaning 20% of fuel energy goes up the flue. High-efficiency condensing furnaces run 90–98.5% AFUE by extracting heat from the flue gases until they condense. In NY, choosing between 80% and 90%+ depends on installation specifics: 80% units require a masonry chimney or B-vent; 90%+ units require direct-vent PVC piping and a condensate disposal system. In homes without an existing chimney, 90%+ may be cheaper to install because it avoids chimney liner costs. Federal minimum AFUE standards are 80% for non-weatherized gas furnaces in the northern US; NY code may have additional requirements — verify locally.",
+      },
+      {
+        subtitle: "Pro Tips & Commonly Overlooked",
+        body: "Cracked heat exchangers are a serious safety hazard and are frequently missed on visual inspection — use a combustion analyzer and perform a CO test in the supply air before clearing any furnace. Flame rollout switches and high limit switches that have tripped once are often reset and ignored; always investigate the root cause (blocked flue, dirty filter, cracked heat exchanger, inadequate combustion air). Inducer motor bearings fail before the motor stops completely — listen for noise and check amp draw. A partially failing inducer causes pressure switch lockouts that are misdiagnosed as pressure switch failures. On 90%+ furnaces, check the condensate trap and drain for blockages; a clogged trap will cause nuisance pressure switch faults. Verify gas pressure at the manifold — low gas pressure causes ignition problems and poor heat output that is often blamed on the igniter or control board. On oil furnaces, inspect the combustion chamber for erosion and the heat exchanger for cracks or rust annually.",
+      },
+    ],
+  },
+  {
+    id: 6,
+    title: "HVAC Residential Electric Work",
+    description:
+      "Electrical panel requirements, wire sizing, circuit breakers, disconnects, low voltage wiring, NY codes.",
+    subsections: [
+      {
+        subtitle: "Panel Requirements",
+        body: "HVAC systems are significant electrical loads. Before adding a heat pump, air handler with strip heat, or large central AC, verify that the existing electrical service and panel have adequate capacity. A typical 3-ton heat pump with 10kW auxiliary heat requires a 240V circuit rated at approximately 60–70 amps for the combined load. Many NY homes — especially pre-1980 construction — have 100-amp service that cannot support a full electrification package. If a panel or service upgrade is needed, coordinate with a licensed electrician early in the project planning. NY requires a licensed master electrician (or a licensed contractor with a master electrician of record) for panel work and service upgrades. Always label new circuits clearly in the panel directory.",
+      },
+      {
+        subtitle: "Wire Sizing",
+        body: "NEC Article 440 governs HVAC wiring. Wire size must be adequate for the circuit's Minimum Circuit Ampacity (MCA) rating, which is listed on the equipment nameplate. Wire must also be protected by overcurrent protection (circuit breaker or fuse) not exceeding the Maximum Overcurrent Protection (MOCP) rating on the nameplate. Common residential HVAC wire: 14 AWG for 15A circuits (low-voltage equipment), 12 AWG for 20A, 10 AWG for 30A, 8 AWG for 40–50A, 6 AWG for 55–65A. In NYC and some other NY jurisdictions, conduit wiring (EMT or rigid conduit) is required for branch circuits — Romex (NM-B) is typically not permitted in NYC. Always use copper conductors; aluminum wiring for HVAC circuits requires listed aluminum-rated terminals and anti-oxidant compound.",
+      },
+      {
+        subtitle: "Circuit Breakers",
+        body: "Use only circuit breakers compatible with the panel brand and within the MOCP listed on the equipment nameplate. HVAC equipment typically uses HACR-type breakers (Heating, Air Conditioning, Refrigeration) which tolerate the high inrush current on compressor start. Never upsize a breaker beyond the MOCP to solve nuisance trips — instead, diagnose the root cause (failed capacitor, locked rotor, low voltage, excessive ambient temperature). GFCI protection is required for specific HVAC locations including in crawlspaces and garages under NEC 210.8. AFCI protection requirements vary by jurisdiction and circuit location; check local amendments. For new heat pump installations, install a dedicated circuit and breaker — never share with other loads.",
+      },
+      {
+        subtitle: "Low Voltage Wiring",
+        body: "Low voltage (24VAC) thermostat and control wiring is 18-24 AWG, typically multi-conductor thermostat cable. The industry standard is 18/5 or 18/8 (18 AWG, 5 or 8 conductors). For smart thermostats and heat pump systems, 8 conductors allows for all control functions including C-wire, stage 2, auxiliary heat, and emergency heat. Run new thermostat wire if the existing wire is undersized, damaged, or lacks sufficient conductors. Low voltage wiring must not be run in the same conduit as line voltage wiring. Secure thermostat wire at regular intervals; avoid stapling tightly (can crush and short conductors). In NYC, low voltage wiring must comply with NEC Article 725 requirements — in some occupancy types, plenum-rated cable is required for runs in air-handling spaces.",
+      },
+      {
+        subtitle: "NY Electrical Codes",
+        body: "New York State adopts the NEC with state amendments published in the Uniform Code. NYC uses a separate electrical code (the New York City Electrical Code, based on NEC with significant local amendments) enforced by the Department of Buildings. Key NY-specific points: licensed electricians required for most work; in NYC, permits required for all HVAC electrical work and inspections required; conduit required in NYC for branch circuits (not NM-B/Romex); specific requirements for work in multiple dwellings under the NYC Multiple Dwelling Law. Always pull permits and schedule inspections — not just for compliance, but to protect yourself and your customer. Unpermitted work creates liability for the contractor and can cause issues with insurance claims and property sales.",
+      },
+      {
+        subtitle: "Pro Tips & Commonly Overlooked",
+        body: "Undersized wire is a leading cause of nuisance breaker trips and equipment damage — always verify wire gauge against the equipment's MCA (minimum circuit ampacity) and MOCP (maximum overcurrent protection) ratings on the nameplate. Many techs overlook voltage imbalance on multi-phase equipment — even a small imbalance (over 2%) dramatically shortens compressor life. Check voltage at the equipment terminals under load, not just at the panel. Loose connections are the number one cause of electrical failures in HVAC — terminals oxidize and loosen over time. Inspect and torque all connections at the contactor, capacitor, and disconnect during every service call. The disconnect must be within sight of the equipment and rated for the load — verify this on every install. On heat pump installs, confirm the correct wire size is used for the aux/emergency heat circuit, which is often a much higher amperage circuit than the heat pump compressor circuit.",
+      },
+    ],
+  },
+  {
+    id: 7,
+    title: "Insulation",
+    description:
+      "Insulation types, R-values, installation methods, air sealing, vapor control, and NY energy code.",
+    subsections: [
+      {
+        subtitle: "Insulation Types",
+        body: "Common types include fiberglass batts, blown-in cellulose, spray foam (open and closed cell), and rigid foam board. Each has different applications, cost points, and performance characteristics. Fiberglass batts are the most common and least expensive, ideal for standard stud-bay installations. Blown-in cellulose is made from recycled paper and is great for retrofitting existing walls and attics. Closed-cell spray foam provides the highest R-value per inch (around R-6 to R-7) and acts as both an air and vapor barrier. Open-cell spray foam is less expensive and provides good air sealing but has a lower R-value (~R-3.5 per inch). Rigid foam board is used for exterior continuous insulation and under slabs.",
+      },
+      {
+        subtitle: "R-Values & NY Energy Code",
+        body: "R-value measures thermal resistance — higher is better. New York follows the Energy Conservation Construction Code (ECCC), which requires: Attics R-49, Exterior walls R-20 (with continuous insulation) or R-13 cavity + R-5 ci, Floors over unconditioned spaces R-30, Basement walls R-15 continuous or R-19 cavity. Climate Zone 5 applies to most of NY. Always verify current local code before starting a job, as requirements can vary by jurisdiction and project type.",
+      },
+      {
+        subtitle: "Attic & Roof Insulation",
+        body: "Attics are the highest-priority area for insulation in New York homes. Blown-in cellulose or fiberglass is the most common approach for attic floors. Before insulating, seal all air leakage points — electrical penetrations, plumbing chases, recessed lights, top plates, and attic hatches. Install baffles at the eaves to maintain ventilation airflow from soffit to ridge. For cathedral ceilings (unvented), closed-cell spray foam applied to the underside of the roof deck is the preferred method to meet code without sacrificing headroom.",
+      },
+      {
+        subtitle: "Wall Insulation",
+        body: "For new construction, 2x6 framing allows for R-21 fiberglass or R-20 open-cell spray foam in the cavity. For existing homes, drill-and-fill (blown-in dense-pack cellulose or fiberglass) is the standard retrofit method. Closed-cell spray foam can be used to insulate rim joists in basements — this is one of the most cost-effective insulation upgrades available. Continuous exterior rigid foam insulation helps address thermal bridging through studs, which can reduce effective wall R-value by 20-30%.",
+      },
+      {
+        subtitle: "Air Sealing",
+        body: "Air sealing is just as important as insulation and should always be done first. Even a well-insulated home can lose significant energy through air infiltration. Key areas to seal: electrical boxes and outlets on exterior walls (use foam gaskets), plumbing and wire penetrations through top and bottom plates, attic hatch covers (weatherstrip and insulate the hatch cover itself), recessed lighting (use IC-rated, airtight fixtures or seal from above), chimney chases and fireplace surrounds, band joists and rim joists in basements. Use caulk for small gaps, foam for medium gaps, and rigid blocking plus foam for large openings.",
+      },
+      {
+        subtitle: "Vapor & Moisture Control",
+        body: "In New York (Climate Zone 5), a Class II vapor retarder (such as kraft-faced fiberglass or vapor barrier paint) is required on the warm-in-winter side of insulation in most wall assemblies. Closed-cell spray foam acts as its own vapor retarder. Avoid trapping moisture — assemblies should be designed to either prevent moisture entry or allow drying to one side. Crawl spaces should be sealed with a ground vapor barrier and insulated at the perimeter walls rather than the floor above. Never insulate over wet or damp framing.",
+      },
+      {
+        subtitle: "NY Energy Code & Permits",
+        body: "Most insulation work in New York requires compliance with the Residential Code of New York State (RCNYS) and the Energy Conservation Construction Code (ECCC). New construction always requires permits and inspections. For existing homes, significant insulation upgrades (such as adding insulation to a finished basement or attic conversion) typically require a permit. Always check with the local building department. The NY State Energy Research and Development Authority (NYSERDA) offers rebate programs for qualifying insulation improvements — it's worth informing customers about available incentives.",
+      },
+      {
+        subtitle: "Pro Tips & Commonly Overlooked",
+        body: "The biggest mistake in insulation work is adding insulation without air sealing first — insulation slows conductive heat transfer, but air leaks bypass insulation entirely and account for 30-40% of heating/cooling losses in older NY homes. Always air seal before or during insulation installation. Bypasses in attics (top plates, dropped ceilings, interior wall cavities open to the attic) are invisible from the attic floor and are frequently skipped — these are the largest air leakage paths in most homes. Rim joists in basements are chronically under-insulated; closed-cell spray foam at the rim joist is one of the best bang-for-buck improvements available. Don't compress fiberglass batts — a 6-inch R-19 batt compressed into a 3.5-inch cavity performs closer to R-13. Verify vapor barrier placement: in NY, it goes on the warm-in-winter side (inside face of exterior walls). Installing it on the wrong side traps moisture in the wall cavity and causes mold and rot. On attic insulation jobs, confirm that soffit vents are not blocked by insulation — use baffles to maintain a clear airflow channel.",
+      },
+    ],
+  },
+];
 
 // ----------------------------------------------------------------
 // Debounce hook
@@ -55,7 +299,7 @@ const SECTION_ICONS: Record<number, string> = {
 // Sidebar Item
 // ----------------------------------------------------------------
 interface SidebarItemProps {
-  section: SectionSummary;
+  section: HandbookSection;
   isActive: boolean;
   isHighlighted: boolean;
   index: number;
@@ -69,7 +313,7 @@ function SidebarItem({
   index,
   onClick,
 }: SidebarItemProps) {
-  const num = Number(section.id);
+  const num = section.id;
   return (
     <motion.button
       data-ocid={`sidebar.section.link.${index}`}
@@ -132,40 +376,17 @@ function SidebarItem({
 }
 
 // ----------------------------------------------------------------
-// Section skeleton
-// ----------------------------------------------------------------
-function SectionSkeleton() {
-  return (
-    <div className="space-y-6 animate-pulse">
-      <div className="space-y-3">
-        <Skeleton className="h-8 w-3/4" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-      </div>
-      <Separator />
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="space-y-3">
-          <Skeleton className="h-5 w-1/3" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-4/5" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ----------------------------------------------------------------
 // Section content panel
 // ----------------------------------------------------------------
 interface SectionPanelProps {
-  sectionId: bigint | null;
+  sectionIndex: number | null;
 }
 
-function SectionPanel({ sectionId }: SectionPanelProps) {
-  const { data: section, isLoading } = useGetSection(sectionId);
+function SectionPanel({ sectionIndex }: SectionPanelProps) {
+  const section =
+    sectionIndex !== null ? HANDBOOK_SECTIONS[sectionIndex] : null;
 
-  if (sectionId === null) {
+  if (!section) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center px-8">
         <BookOpen
@@ -183,27 +404,11 @@ function SectionPanel({ sectionId }: SectionPanelProps) {
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="p-6 md:p-10">
-        <SectionSkeleton />
-      </div>
-    );
-  }
-
-  if (!section) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center px-8">
-        <p className="text-muted-foreground">Section not found.</p>
-      </div>
-    );
-  }
-
-  const sectionNum = Number(section.id);
+  const sectionNum = section.id;
 
   return (
     <motion.div
-      key={section.id.toString()}
+      key={section.id}
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
@@ -773,6 +978,195 @@ function InHomeProcessPage() {
 }
 
 // ----------------------------------------------------------------
+// Checklist Page
+// ----------------------------------------------------------------
+const CHECKLIST_ITEMS = [
+  { id: "gas_oil", label: "Gas/Oil?" },
+  { id: "decommissioning", label: "Decommissioning?" },
+  { id: "integration", label: "Integration?" },
+  { id: "changeout", label: "Changeout?" },
+  { id: "mini_splits", label: "Mini Splits?" },
+  { id: "central_system", label: "Central System?" },
+];
+
+function ChecklistPage() {
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+
+  const toggle = (id: string) =>
+    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const checkedCount = Object.values(checked).filter(Boolean).length;
+
+  return (
+    <motion.div
+      key="checklist"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="max-w-xl mx-auto px-6 md:px-10 py-10"
+    >
+      {/* Page header */}
+      <header className="mb-10">
+        <div className="flex items-center gap-3 mb-4">
+          <CheckSquare
+            size={16}
+            style={{ color: "oklch(var(--handbook-amber))" }}
+          />
+          <span
+            className="font-mono-code text-xs font-semibold tracking-widest uppercase"
+            style={{ color: "oklch(var(--handbook-amber))" }}
+          >
+            Quick Reference
+          </span>
+          <div
+            className="h-px flex-1"
+            style={{ background: "oklch(var(--handbook-rule))" }}
+          />
+        </div>
+        <h1 className="font-display text-4xl md:text-5xl font-semibold text-foreground mb-4 leading-tight">
+          Job Checklist
+        </h1>
+        <p
+          className="text-base leading-relaxed max-w-lg"
+          style={{ color: "oklch(var(--handbook-subtitle-text))" }}
+        >
+          Tap each item to check it off on the go. Checks reset when you
+          navigate away.
+        </p>
+        <div
+          className="mt-6 h-px"
+          style={{ background: "oklch(var(--handbook-rule))" }}
+        />
+      </header>
+
+      {/* Progress indicator */}
+      <div className="mb-6 flex items-center gap-3">
+        <div
+          className="flex-1 h-1.5 rounded-full overflow-hidden"
+          style={{ background: "oklch(var(--handbook-rule))" }}
+        >
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: "oklch(var(--handbook-amber))" }}
+            animate={{
+              width: `${(checkedCount / CHECKLIST_ITEMS.length) * 100}%`,
+            }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          />
+        </div>
+        <span
+          className="font-mono-code text-xs font-medium shrink-0"
+          style={{ color: "oklch(var(--handbook-amber))" }}
+        >
+          {checkedCount}/{CHECKLIST_ITEMS.length}
+        </span>
+      </div>
+
+      {/* Checklist items */}
+      <div className="space-y-3">
+        {CHECKLIST_ITEMS.map((item, idx) => {
+          const isChecked = !!checked[item.id];
+          return (
+            <motion.button
+              key={item.id}
+              type="button"
+              data-ocid={`checklist.checkbox.${idx + 1}`}
+              onClick={() => toggle(item.id)}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.06, duration: 0.25 }}
+              className={[
+                "w-full flex items-center gap-4 px-5 py-4 rounded-lg border transition-all duration-200",
+                "text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-handbook",
+                isChecked
+                  ? "border-amber/40 bg-amber/5"
+                  : "border-border/60 hover:border-amber/30 hover:bg-accent/40",
+              ].join(" ")}
+              style={
+                isChecked
+                  ? {
+                      borderColor: "oklch(var(--handbook-amber) / 0.4)",
+                      background: "oklch(var(--handbook-amber) / 0.05)",
+                    }
+                  : {}
+              }
+              aria-pressed={isChecked}
+              aria-label={item.label}
+            >
+              {/* Custom checkbox visual */}
+              <div
+                className={[
+                  "w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200",
+                ].join(" ")}
+                style={{
+                  borderColor: isChecked
+                    ? "oklch(var(--handbook-amber))"
+                    : "oklch(var(--muted-foreground) / 0.4)",
+                  background: isChecked
+                    ? "oklch(var(--handbook-amber))"
+                    : "transparent",
+                }}
+              >
+                {isChecked && (
+                  <motion.svg
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    role="img"
+                    aria-label="Checked"
+                  >
+                    <path
+                      d="M2 6l3 3 5-5"
+                      stroke="white"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </motion.svg>
+                )}
+              </div>
+
+              {/* Label */}
+              <span
+                className={[
+                  "font-display text-lg font-medium transition-all duration-200",
+                  isChecked ? "line-through opacity-50" : "text-foreground",
+                ].join(" ")}
+              >
+                {item.label}
+              </span>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Reset button */}
+      {checkedCount > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-8 flex justify-end"
+        >
+          <button
+            type="button"
+            data-ocid="checklist.reset.button"
+            onClick={() => setChecked({})}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-handbook rounded"
+          >
+            Reset all
+          </button>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
+// ----------------------------------------------------------------
 // Top Tab Bar
 // ----------------------------------------------------------------
 interface TabBarProps {
@@ -810,6 +1204,12 @@ function TabBar({ activeTab, onTabChange }: TabBarProps) {
       label: "In Home Process",
       icon: <Home size={14} />,
       ocid: "nav.in_home_process.tab",
+    },
+    {
+      id: "checklist",
+      label: "Checklist",
+      icon: <CheckSquare size={14} />,
+      ocid: "nav.checklist.tab",
     },
   ];
 
@@ -864,35 +1264,45 @@ function TabBar({ activeTab, onTabChange }: TabBarProps) {
 // ----------------------------------------------------------------
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabView>("handbook");
-  const [activeSectionId, setActiveSectionId] = useState<bigint | null>(null);
+  const [activeSectionIndex, setActiveSectionIndex] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const { data: sections = [], isLoading: sectionsLoading } =
-    useGetAllSections();
-  const { data: searchResults = [] } = useSearchSections(debouncedSearch);
+  // Filter handbook sections client-side based on search query
+  const filteredSections = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    if (!q) return HANDBOOK_SECTIONS;
+    return HANDBOOK_SECTIONS.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q) ||
+        s.subsections.some(
+          (sub) =>
+            sub.subtitle.toLowerCase().includes(q) ||
+            sub.body.toLowerCase().includes(q),
+        ),
+    );
+  }, [debouncedSearch]);
 
-  // Highlighted section IDs from search
-  const highlightedIds = new Set(
-    debouncedSearch.trim() ? searchResults.map((r) => r.id.toString()) : [],
+  // Set of IDs that match the search (for highlight in sidebar)
+  const highlightedIds = useMemo(
+    () =>
+      new Set(
+        debouncedSearch.trim()
+          ? filteredSections.map((s) => s.id)
+          : ([] as number[]),
+      ),
+    [debouncedSearch, filteredSections],
   );
 
-  // Auto-select first section on load
-  useEffect(() => {
-    if (sections.length > 0 && activeSectionId === null) {
-      setActiveSectionId(sections[0].id);
-    }
-  }, [sections, activeSectionId]);
-
-  const handleSectionClick = useCallback((id: bigint) => {
-    setActiveSectionId(id);
+  const handleSectionClick = useCallback((index: number) => {
+    setActiveSectionIndex(index);
     setSidebarOpen(false);
   }, []);
 
-  // Switch to handbook tab when clicking a section from search results
   const handleTabChange = useCallback((tab: TabView) => {
     setActiveTab(tab);
   }, []);
@@ -1046,12 +1456,12 @@ export default function App() {
                   className="px-4 pb-2 overflow-hidden"
                 >
                   <p className="text-xs text-muted-foreground">
-                    {searchResults.length > 0 ? (
+                    {filteredSections.length > 0 ? (
                       <>
                         <span className="text-amber font-medium">
-                          {searchResults.length}
+                          {filteredSections.length}
                         </span>{" "}
-                        match{searchResults.length !== 1 ? "es" : ""} for "
+                        match{filteredSections.length !== 1 ? "es" : ""} for "
                         {debouncedSearch}"
                       </>
                     ) : (
@@ -1064,26 +1474,18 @@ export default function App() {
 
             {/* Section list */}
             <ScrollArea className="flex-1 px-2 pb-4">
-              {sectionsLoading ? (
-                <div className="px-2 space-y-2 pt-2">
-                  {["s1", "s2", "s3", "s4", "s5", "s6", "s7"].map((k) => (
-                    <Skeleton key={k} className="h-11 w-full rounded-md" />
-                  ))}
-                </div>
-              ) : (
-                <nav aria-label="Handbook sections">
-                  {sections.map((section, idx) => (
-                    <SidebarItem
-                      key={section.id.toString()}
-                      section={section}
-                      isActive={activeSectionId === section.id}
-                      isHighlighted={highlightedIds.has(section.id.toString())}
-                      index={idx + 1}
-                      onClick={() => handleSectionClick(section.id)}
-                    />
-                  ))}
-                </nav>
-              )}
+              <nav aria-label="Handbook sections">
+                {HANDBOOK_SECTIONS.map((section, idx) => (
+                  <SidebarItem
+                    key={section.id}
+                    section={section}
+                    isActive={activeSectionIndex === idx}
+                    isHighlighted={highlightedIds.has(section.id)}
+                    index={idx + 1}
+                    onClick={() => handleSectionClick(idx)}
+                  />
+                ))}
+              </nav>
             </ScrollArea>
 
             {/* Sidebar footer */}
@@ -1092,7 +1494,7 @@ export default function App() {
               style={{ borderColor: "oklch(var(--handbook-rule))" }}
             >
               <p className="text-xs text-muted-foreground/50 font-mono-code">
-                {sections.length} sections
+                {HANDBOOK_SECTIONS.length} sections
               </p>
             </div>
           </aside>
@@ -1104,20 +1506,18 @@ export default function App() {
             id="main-content"
           >
             {/* Breadcrumb nav */}
-            {activeSectionId !== null && sections.length > 0 && (
-              <div
-                className="sticky top-0 z-10 flex items-center gap-2 px-6 md:px-10 h-9 border-b border-border/30 text-xs text-muted-foreground"
-                style={{ background: "oklch(var(--background) / 0.95)" }}
-              >
-                <span>Handbook</span>
-                <ChevronRight size={12} className="opacity-40" />
-                <span className="text-foreground font-medium">
-                  {sections.find((s) => s.id === activeSectionId)?.title ?? ""}
-                </span>
-              </div>
-            )}
+            <div
+              className="sticky top-0 z-10 flex items-center gap-2 px-6 md:px-10 h-9 border-b border-border/30 text-xs text-muted-foreground"
+              style={{ background: "oklch(var(--background) / 0.95)" }}
+            >
+              <span>Handbook</span>
+              <ChevronRight size={12} className="opacity-40" />
+              <span className="text-foreground font-medium">
+                {HANDBOOK_SECTIONS[activeSectionIndex]?.title ?? ""}
+              </span>
+            </div>
 
-            <SectionPanel sectionId={activeSectionId} />
+            <SectionPanel sectionIndex={activeSectionIndex} />
 
             {/* Footer */}
             <footer className="px-6 md:px-10 py-8 mt-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap">
@@ -1200,6 +1600,32 @@ export default function App() {
             <InHomeProcessPage key="in_home" />
           </AnimatePresence>
           <footer className="px-6 md:px-10 py-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap max-w-3xl mx-auto">
+            <span>HVAC &amp; Insulation Handbook — Field Reference</span>
+            <span>
+              © {year}. Built with ❤ using{" "}
+              <a
+                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-muted-foreground transition-colors"
+              >
+                caffeine.ai
+              </a>
+            </span>
+          </footer>
+        </div>
+      )}
+
+      {/* ── Content: Checklist view ───────────────────────────── */}
+      {activeTab === "checklist" && (
+        <div
+          className="flex-1 overflow-y-auto"
+          style={{ height: contentHeight }}
+        >
+          <AnimatePresence mode="wait">
+            <ChecklistPage key="checklist" />
+          </AnimatePresence>
+          <footer className="px-6 md:px-10 py-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap max-w-xl mx-auto">
             <span>HVAC &amp; Insulation Handbook — Field Reference</span>
             <span>
               © {year}. Built with ❤ using{" "}
