@@ -3,10 +3,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   BookOpen,
   CalendarDays,
-  CheckSquare,
   ChevronRight,
   Clock,
   DollarSign,
+  Flag,
   Home,
   Loader2,
   Menu,
@@ -26,9 +26,9 @@ type TabView =
   | "history"
   | "sales_tips"
   | "in_home_process"
-  | "checklist"
   | "calendar"
-  | "financial";
+  | "financial"
+  | "us_history";
 
 interface Subsection {
   subtitle: string;
@@ -984,195 +984,6 @@ function InHomeProcessPage() {
 }
 
 // ----------------------------------------------------------------
-// Checklist Page
-// ----------------------------------------------------------------
-const CHECKLIST_ITEMS = [
-  { id: "gas_oil", label: "Gas/Oil?" },
-  { id: "decommissioning", label: "Decommissioning?" },
-  { id: "integration", label: "Integration?" },
-  { id: "changeout", label: "Changeout?" },
-  { id: "mini_splits", label: "Mini Splits?" },
-  { id: "central_system", label: "Central System?" },
-];
-
-function ChecklistPage() {
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
-
-  const toggle = (id: string) =>
-    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
-
-  const checkedCount = Object.values(checked).filter(Boolean).length;
-
-  return (
-    <motion.div
-      key="checklist"
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-      className="max-w-xl mx-auto px-6 md:px-10 py-10"
-    >
-      {/* Page header */}
-      <header className="mb-10">
-        <div className="flex items-center gap-3 mb-4">
-          <CheckSquare
-            size={16}
-            style={{ color: "oklch(var(--handbook-amber))" }}
-          />
-          <span
-            className="font-mono-code text-xs font-semibold tracking-widest uppercase"
-            style={{ color: "oklch(var(--handbook-amber))" }}
-          >
-            Quick Reference
-          </span>
-          <div
-            className="h-px flex-1"
-            style={{ background: "oklch(var(--handbook-rule))" }}
-          />
-        </div>
-        <h1 className="font-display text-4xl md:text-5xl font-semibold text-foreground mb-4 leading-tight">
-          Job Checklist
-        </h1>
-        <p
-          className="text-base leading-relaxed max-w-lg"
-          style={{ color: "oklch(var(--handbook-subtitle-text))" }}
-        >
-          Tap each item to check it off on the go. Checks reset when you
-          navigate away.
-        </p>
-        <div
-          className="mt-6 h-px"
-          style={{ background: "oklch(var(--handbook-rule))" }}
-        />
-      </header>
-
-      {/* Progress indicator */}
-      <div className="mb-6 flex items-center gap-3">
-        <div
-          className="flex-1 h-1.5 rounded-full overflow-hidden"
-          style={{ background: "oklch(var(--handbook-rule))" }}
-        >
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: "oklch(var(--handbook-amber))" }}
-            animate={{
-              width: `${(checkedCount / CHECKLIST_ITEMS.length) * 100}%`,
-            }}
-            transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          />
-        </div>
-        <span
-          className="font-mono-code text-xs font-medium shrink-0"
-          style={{ color: "oklch(var(--handbook-amber))" }}
-        >
-          {checkedCount}/{CHECKLIST_ITEMS.length}
-        </span>
-      </div>
-
-      {/* Checklist items */}
-      <div className="space-y-3">
-        {CHECKLIST_ITEMS.map((item, idx) => {
-          const isChecked = !!checked[item.id];
-          return (
-            <motion.button
-              key={item.id}
-              type="button"
-              data-ocid={`checklist.checkbox.${idx + 1}`}
-              onClick={() => toggle(item.id)}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.06, duration: 0.25 }}
-              className={[
-                "w-full flex items-center gap-4 px-5 py-4 rounded-lg border transition-all duration-200",
-                "text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-handbook",
-                isChecked
-                  ? "border-amber/40 bg-amber/5"
-                  : "border-border/60 hover:border-amber/30 hover:bg-accent/40",
-              ].join(" ")}
-              style={
-                isChecked
-                  ? {
-                      borderColor: "oklch(var(--handbook-amber) / 0.4)",
-                      background: "oklch(var(--handbook-amber) / 0.05)",
-                    }
-                  : {}
-              }
-              aria-pressed={isChecked}
-              aria-label={item.label}
-            >
-              {/* Custom checkbox visual */}
-              <div
-                className={[
-                  "w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200",
-                ].join(" ")}
-                style={{
-                  borderColor: isChecked
-                    ? "oklch(var(--handbook-amber))"
-                    : "oklch(var(--muted-foreground) / 0.4)",
-                  background: isChecked
-                    ? "oklch(var(--handbook-amber))"
-                    : "transparent",
-                }}
-              >
-                {isChecked && (
-                  <motion.svg
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    role="img"
-                    aria-label="Checked"
-                  >
-                    <path
-                      d="M2 6l3 3 5-5"
-                      stroke="white"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </motion.svg>
-                )}
-              </div>
-
-              {/* Label */}
-              <span
-                className={[
-                  "font-display text-lg font-medium transition-all duration-200",
-                  isChecked ? "line-through opacity-50" : "text-foreground",
-                ].join(" ")}
-              >
-                {item.label}
-              </span>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Reset button */}
-      {checkedCount > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-8 flex justify-end"
-        >
-          <button
-            type="button"
-            data-ocid="checklist.reset.button"
-            onClick={() => setChecked({})}
-            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-handbook rounded"
-          >
-            Reset all
-          </button>
-        </motion.div>
-      )}
-    </motion.div>
-  );
-}
-
-// ----------------------------------------------------------------
 // Calendar Page
 // ----------------------------------------------------------------
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
@@ -2059,6 +1870,552 @@ function FinancialAssistantPage() {
 }
 
 // ----------------------------------------------------------------
+// US History Page
+// ----------------------------------------------------------------
+interface HistoryEvent {
+  year: string;
+  title: string;
+  body: string;
+}
+
+interface HistoryEra {
+  num: string;
+  era: string;
+  events: HistoryEvent[];
+}
+
+const US_HISTORY_ERAS: HistoryEra[] = [
+  {
+    num: "01",
+    era: "Colonial America & The Road to Revolution (1700–1775)",
+    events: [
+      {
+        year: "1700s",
+        title: "Colonial Society Takes Shape",
+        body: "By 1700 roughly 250,000 English colonists live along the Atlantic seaboard in thirteen distinct colonies. Each colony develops its own legislature, legal tradition, and economic character — New England built on trade and fishing, the Middle Colonies on grain and commerce, the South on tobacco and enslaved labor. The tension between colonial self-governance and British imperial authority quietly takes root in this period.",
+      },
+      {
+        year: "1733",
+        title: "The Molasses Act",
+        body: "Britain passes the Molasses Act, taxing sugar and molasses imported from non-British Caribbean islands. Colonists largely ignore it through smuggling, establishing an early pattern of resistance to British economic control. The principle that Parliament cannot tax colonists without their consent begins to harden.",
+      },
+      {
+        year: "1754–1763",
+        title: "The French and Indian War",
+        body: "Britain and France fight for control of North America. The war ends with British victory and the Treaty of Paris in 1763, which grants Britain vast new territory east of the Mississippi. The enormous cost of the war prompts Britain to tax the colonies — triggering the chain of events that will lead to revolution. A young Virginia militia officer named George Washington gains his first military experience in this conflict.",
+      },
+      {
+        year: "1765",
+        title: "The Stamp Act",
+        body: "Parliament passes the Stamp Act, the first direct tax on the colonies, requiring a revenue stamp on all printed materials. Colonial opposition is fierce — the cry of 'no taxation without representation' unites colonists across regions. The Stamp Act Congress convenes in New York, representing the first major joint action by multiple colonies. Britain repeals the act in 1766 but asserts its right to tax colonists in the Declaratory Act.",
+      },
+      {
+        year: "1770",
+        title: "The Boston Massacre",
+        body: "On March 5, British soldiers fire into a crowd in Boston, killing five colonists including Crispus Attucks, a mixed-race dockworker. Patriot propagandists, including Paul Revere, use the event to inflame colonial opinion against British military occupation. The incident becomes one of the most potent symbols of British tyranny in the pre-revolutionary period.",
+      },
+      {
+        year: "1773",
+        title: "The Boston Tea Party",
+        body: "In December, colonists disguised as Mohawk warriors dump 342 chests of British East India Company tea into Boston Harbor to protest the Tea Act. Britain responds with the Coercive Acts (the 'Intolerable Acts') in 1774, closing Boston Harbor and revoking Massachusetts's self-government charter. Rather than isolating Massachusetts, the punitive measures unite the colonies and accelerate the path to war.",
+      },
+    ],
+  },
+  {
+    num: "02",
+    era: "Revolution, Independence & The New Republic (1775–1800)",
+    events: [
+      {
+        year: "1775",
+        title: "Lexington and Concord — The Shot Heard 'Round the World'",
+        body: "On April 19, British regulars marching to seize colonial arms at Concord, Massachusetts, exchange fire with minutemen at Lexington and Concord. Eight colonists are killed at Lexington in the war's first engagement. The battles mark the beginning of the American Revolutionary War. Within weeks, colonial militias lay siege to British-held Boston.",
+      },
+      {
+        year: "1776",
+        title: "The Declaration of Independence",
+        body: "On July 4, the Continental Congress adopts the Declaration of Independence, primarily drafted by Thomas Jefferson. Drawing on Enlightenment philosophy — particularly John Locke's theories of natural rights — the Declaration asserts that all men are created equal and endowed with unalienable rights to life, liberty, and the pursuit of happiness. It remains one of the most consequential political documents in world history, though its ideals would take centuries to apply broadly.",
+      },
+      {
+        year: "1777–1778",
+        title: "Valley Forge and the French Alliance",
+        body: "Washington's Continental Army endures a brutal winter at Valley Forge, Pennsylvania — starved, underequipped, and ravaged by disease. The experience nearly destroys the army but forges a battle-hardened core of survivors. In February 1778, France formally allies with the United States, providing the naval power and financial resources that will prove decisive in achieving independence.",
+      },
+      {
+        year: "1781",
+        title: "Yorktown — The War's Decisive Battle",
+        body: "A combined American and French force traps British General Cornwallis at Yorktown, Virginia. After a three-week siege, Cornwallis surrenders his army of roughly 8,000 men on October 19 — the largest British surrender of the war. While fighting continues in some areas, Yorktown effectively ends the conflict. The Treaty of Paris in 1783 officially recognizes American independence and grants the new nation all territory east of the Mississippi.",
+      },
+      {
+        year: "1787",
+        title: "The Constitutional Convention",
+        body: "Fifty-five delegates convene in Philadelphia to revise the Articles of Confederation, the country's weak first governing document. They instead draft an entirely new Constitution establishing a federal government with three branches, a system of checks and balances, and a framework for federal-state relations. The Great Compromise resolves the dispute between large and small states over congressional representation. After ratification by nine states in 1788, the Constitution takes effect in 1789.",
+      },
+      {
+        year: "1789–1797",
+        title: "George Washington's Presidency",
+        body: "George Washington serves two terms as the first President, establishing precedents that shape the office permanently — including the two-term tradition he voluntarily upheld. Alexander Hamilton as Treasury Secretary and Thomas Jefferson as Secretary of State represent competing visions of national development: a commercially oriented federal government versus an agrarian republic of small landholders. Their conflict defines American politics for decades. In his Farewell Address (1796), Washington warns against permanent foreign alliances and partisan factionalism.",
+      },
+    ],
+  },
+  {
+    num: "03",
+    era: "Expansion, Conflict & The Slavery Crisis (1800–1860)",
+    events: [
+      {
+        year: "1803",
+        title: "The Louisiana Purchase",
+        body: "President Thomas Jefferson purchases approximately 828,000 square miles of French-controlled territory for $15 million — roughly three cents per acre. The acquisition doubles the size of the United States and opens the vast interior of the continent to American settlement. The expedition of Lewis and Clark (1804–1806) maps much of this new territory, documenting its geography, people, and natural resources.",
+      },
+      {
+        year: "1812–1815",
+        title: "The War of 1812",
+        body: "The United States goes to war with Britain over trade restrictions, impressment of American sailors, and British support for Native American resistance to westward expansion. The war includes the British burning of Washington D.C. in 1814 and Andrew Jackson's decisive victory at the Battle of New Orleans. The Treaty of Ghent restores the pre-war status quo but establishes the northern border with Canada. The war produces lasting American nationalism and ends Native American armed resistance east of the Mississippi.",
+      },
+      {
+        year: "1823",
+        title: "The Monroe Doctrine",
+        body: "President James Monroe declares that the Western Hemisphere is closed to future European colonization and that any attempt by European powers to extend their system to this hemisphere will be considered a threat to American security. The Monroe Doctrine becomes a cornerstone of American foreign policy, invoked for over a century to justify U.S. involvement in Latin American affairs.",
+      },
+      {
+        year: "1830",
+        title: "Indian Removal Act & The Trail of Tears",
+        body: "Congress passes the Indian Removal Act, authorizing the forced relocation of Native American tribes east of the Mississippi to designated 'Indian Territory' west of the river. The Cherokee, who had adopted many Euro-American customs and won a Supreme Court ruling in their favor (Worcester v. Georgia, 1832), are forcibly marched west in 1838–1839 — the 'Trail of Tears.' Approximately 4,000 of the estimated 16,000 Cherokee die during the removal.",
+      },
+      {
+        year: "1846–1848",
+        title: "The Mexican-American War",
+        body: "Following the annexation of Texas (1845), the United States fights Mexico in a war that ends with the Treaty of Guadalupe Hidalgo. Mexico cedes roughly half its territory — today's California, Nevada, Utah, Arizona, New Mexico, and parts of Colorado and Wyoming — for $15 million. The acquisition of this vast territory immediately reignites the slavery debate, which will dominate American politics for the next decade and a half.",
+      },
+      {
+        year: "1848",
+        title: "The California Gold Rush",
+        body: "Gold is discovered at Sutter's Mill in California in January 1848. By 1849 more than 80,000 '49ers' have flooded into California from across the United States and around the world. The Gold Rush accelerates California's statehood (1850), transforms San Francisco from a small settlement into a major city, and establishes the United States as a Pacific power. It also fuels explosive demand for transcontinental transportation.",
+      },
+      {
+        year: "1852",
+        title: "Uncle Tom's Cabin Published",
+        body: "Harriet Beecher Stowe publishes 'Uncle Tom's Cabin,' a novel depicting the brutality of slavery. It sells 300,000 copies in its first year — an extraordinary number for the era — and galvanizes anti-slavery opinion in the North. When Abraham Lincoln reportedly meets Stowe during the Civil War, he is said to have called her 'the little woman who wrote the book that started this great war.'",
+      },
+      {
+        year: "1857",
+        title: "Dred Scott Decision",
+        body: "The Supreme Court rules in Dred Scott v. Sandford that enslaved people are not citizens and have no right to sue in federal court, and that Congress has no authority to prohibit slavery in U.S. territories. The decision is received with outrage in the North and accelerates the collapse of political compromise on slavery. It is widely regarded as one of the worst decisions in Supreme Court history.",
+      },
+    ],
+  },
+  {
+    num: "04",
+    era: "Civil War & Reconstruction (1861–1877)",
+    events: [
+      {
+        year: "1861",
+        title: "The Civil War Begins",
+        body: "Following the secession of eleven Southern states over the issue of slavery and states' rights, Confederate forces fire on Fort Sumter in Charleston Harbor on April 12. President Abraham Lincoln calls for 75,000 volunteers. Both sides expect a short war; few anticipate the four-year conflict that will kill approximately 620,000 to 750,000 soldiers — more American deaths than in any other war — and fundamentally transform the nation.",
+      },
+      {
+        year: "1863",
+        title: "The Emancipation Proclamation & Gettysburg",
+        body: "On January 1, Lincoln issues the Emancipation Proclamation, declaring all enslaved people in Confederate states 'forever free.' The proclamation transforms the war's moral character and prevents Britain and France from recognizing the Confederacy. In July, the Battle of Gettysburg becomes the war's turning point — three days of fighting result in 51,000 casualties and the end of Confederate General Lee's second invasion of the North. Lincoln's Gettysburg Address, delivered at the dedication of the battlefield cemetery, reframes the war as a struggle for human equality.",
+      },
+      {
+        year: "1865",
+        title: "The War Ends; Lincoln Assassinated",
+        body: "General Lee surrenders at Appomattox Court House on April 9. Five days later, President Lincoln is shot at Ford's Theatre by Confederate sympathizer John Wilkes Booth and dies the following morning. The 13th Amendment, ratified in December, abolishes slavery throughout the United States. The task of rebuilding the shattered South and integrating four million newly freed people into American life — Reconstruction — begins under Lincoln's successor, Andrew Johnson.",
+      },
+      {
+        year: "1865–1877",
+        title: "Reconstruction",
+        body: "The Reconstruction era reshapes the South's political and social order. The 14th Amendment (1868) grants citizenship and equal protection to all persons born in the United States. The 15th Amendment (1870) guarantees the right to vote regardless of race. Black men serve in Congress and state legislatures for the first time. However, Reconstruction is ultimately undermined by Southern white resistance, Northern fatigue, and the Compromise of 1877, which withdraws federal troops from the South and ends Reconstruction — leaving Black Southerners vulnerable to the Jim Crow era that follows.",
+      },
+    ],
+  },
+  {
+    num: "05",
+    era: "Industrialization, Immigration & Empire (1877–1914)",
+    events: [
+      {
+        year: "1869",
+        title: "Transcontinental Railroad Completed",
+        body: "The Central Pacific and Union Pacific railroads join at Promontory Summit, Utah, completing the first transcontinental railroad. Built largely by Chinese and Irish immigrant laborers, the railroad knits the continent together, accelerates western settlement, and transforms the American economy. It also precipitates the final destruction of Plains Indian cultures as buffalo herds are decimated and traditional territories are overrun.",
+      },
+      {
+        year: "1880s–1900s",
+        title: "The Gilded Age: Steel, Oil & the Robber Barons",
+        body: "The post-Civil War decades see explosive industrialization. John D. Rockefeller's Standard Oil dominates the petroleum industry; Andrew Carnegie's steel empire builds the industrial infrastructure of modern America; J.P. Morgan controls vast swaths of American finance. The concentration of wealth is extraordinary — and so is the exploitation of workers, the corruption of politics, and the power of trusts. Reformers and labor organizers push back, planting the seeds of the Progressive Era.",
+      },
+      {
+        year: "1886",
+        title: "The Haymarket Affair & Rise of Organized Labor",
+        body: "On May 4, a bomb explodes at a labor rally in Chicago's Haymarket Square during a demonstration for the eight-hour workday, killing seven police officers. Eight anarchists are tried and convicted in a process widely criticized as unjust. The event sets back the labor movement but ultimately strengthens calls for workers' rights. The American Federation of Labor, founded the same year by Samuel Gompers, becomes the dominant labor organization of the era.",
+      },
+      {
+        year: "1898",
+        title: "The Spanish-American War",
+        body: "Following the mysterious explosion of the USS Maine in Havana harbor, the United States declares war on Spain. Within months, American forces defeat Spain in Cuba and the Philippines. The Treaty of Paris grants the United States control of Puerto Rico, Guam, and the Philippines — catapulting America onto the world stage as an imperial power. The war lasts only 10 weeks and produces the Cuban independence the war was ostensibly fought to achieve, while simultaneously establishing American dominance in the Caribbean and Pacific.",
+      },
+      {
+        year: "1903",
+        title: "The Wright Brothers Fly at Kitty Hawk",
+        body: "On December 17, Orville and Wilbur Wright make the first successful powered airplane flight at Kitty Hawk, North Carolina. The longest of four flights that day lasts 59 seconds and covers 852 feet. Within decades, aviation transforms warfare, commerce, and human civilization. The Wright Brothers' achievement is one of the defining technological events of the 20th century.",
+      },
+    ],
+  },
+  {
+    num: "06",
+    era: "World Wars & The American Century (1914–1945)",
+    events: [
+      {
+        year: "1917–1918",
+        title: "World War I: America Enters the War",
+        body: "After years of neutrality, the United States enters World War I in April 1917, following Germany's resumption of unrestricted submarine warfare and the revelation of the Zimmermann Telegram — Germany's secret proposal that Mexico attack the United States. American troops, money, and supplies tip the balance decisively in favor of the Allies. The Armistice on November 11, 1918 ends the war. President Wilson's Fourteen Points envision a liberal international order, but the Senate rejects the Treaty of Versailles and membership in the League of Nations. The punitive terms imposed on Germany plant the seeds of the next world war.",
+      },
+      {
+        year: "1920",
+        title: "Women's Suffrage: The 19th Amendment",
+        body: "The 19th Amendment, ratified on August 18, guarantees women the right to vote — the culmination of over 70 years of organized suffrage campaigning. The suffrage movement was itself deeply intertwined with other reform movements of the era, including temperance and labor rights. The amendment does not extend to women of color in states that use poll taxes and literacy tests to disenfranchise Black voters.",
+      },
+      {
+        year: "1929",
+        title: "The Stock Market Crash & The Great Depression",
+        body: "On October 24 and 29 ('Black Thursday' and 'Black Tuesday'), the stock market collapses. The crash triggers the Great Depression — the worst economic catastrophe in American history. By 1933, unemployment reaches 25%. Thousands of banks fail. Millions lose their homes and farms. The Depression exposes the structural weaknesses of the unregulated economy of the 1920s and transforms the relationship between citizens and the federal government.",
+      },
+      {
+        year: "1933–1939",
+        title: "The New Deal",
+        body: "President Franklin D. Roosevelt's New Deal is a sweeping set of programs, reforms, and agencies designed to provide relief, recovery, and reform in response to the Depression. Key programs include the Social Security Act (1935), the creation of the FDIC to insure bank deposits, the Securities and Exchange Commission to regulate financial markets, the Civilian Conservation Corps, and the Works Progress Administration. The New Deal fundamentally reshapes the role of the federal government in American life.",
+      },
+      {
+        year: "1941",
+        title: "Pearl Harbor & World War II",
+        body: "On December 7, Japan launches a surprise attack on the U.S. naval base at Pearl Harbor, Hawaii, killing 2,403 Americans and destroying or damaging much of the Pacific Fleet. The next day Congress declares war on Japan; Germany and Italy declare war on the United States days later. America mobilizes with staggering speed and scale — converting industrial capacity to war production, drafting millions, and deploying forces across two vast theaters of war simultaneously.",
+      },
+      {
+        year: "1944",
+        title: "D-Day: The Normandy Invasion",
+        body: "On June 6, Allied forces launch the largest amphibious invasion in history — Operation Overlord — landing on five beaches in Normandy, France. More than 156,000 American, British, and Canadian troops cross the English Channel; 4,414 Allied troops are confirmed dead on the first day alone. The successful landings open the Western Front and begin the liberation of Western Europe from Nazi occupation.",
+      },
+      {
+        year: "1945",
+        title: "Victory in Europe and Japan; The Atomic Bomb",
+        body: "Germany surrenders on May 8, 1945 (V-E Day). In August, the United States drops atomic bombs on Hiroshima (August 6) and Nagasaki (August 9), killing an estimated 129,000–226,000 people. Japan surrenders on September 2 (V-J Day), ending World War II. The atomic bombings open the nuclear age, fundamentally altering the nature of warfare and international relations. The United States emerges from the war as the world's dominant military, economic, and political power.",
+      },
+    ],
+  },
+  {
+    num: "07",
+    era: "The Cold War & Civil Rights (1945–1975)",
+    events: [
+      {
+        year: "1947–1950",
+        title: "The Cold War Begins",
+        body: "Following World War II, the United States and Soviet Union emerge as competing superpowers. The Truman Doctrine (1947) pledges American support to nations resisting communist takeover. The Marshall Plan (1948) provides $13 billion to rebuild Western Europe — cementing American economic influence and containing Soviet expansion. NATO is founded in 1949. The Soviet detonation of an atomic bomb in 1949 and the Communist victory in China trigger a major escalation of Cold War tensions. The ideological, military, and economic contest between the two superpowers will define global politics for the next four decades.",
+      },
+      {
+        year: "1950–1953",
+        title: "The Korean War",
+        body: "When North Korea invades South Korea in June 1950, the United States leads a United Nations force in defense of the South. China enters the war when UN forces approach the Chinese border. The war ends in an armistice in 1953, roughly restoring the pre-war border at the 38th parallel. Approximately 36,500 American soldiers are killed. Korea becomes known as 'the Forgotten War' — overshadowed by World War II and the conflicts that follow. The Korean peninsula remains divided to this day.",
+      },
+      {
+        year: "1954",
+        title: "Brown v. Board of Education",
+        body: "The Supreme Court rules unanimously in Brown v. Board of Education that racial segregation in public schools is unconstitutional, overturning the 'separate but equal' doctrine established in Plessy v. Ferguson (1896). The decision is a landmark moment in the Civil Rights Movement and sets the legal framework for desegregation, though implementation proceeds slowly and often against fierce resistance over the following decades.",
+      },
+      {
+        year: "1955–1965",
+        title: "The Civil Rights Movement",
+        body: "The Montgomery Bus Boycott (1955–1956), sparked by Rosa Parks's arrest, launches the career of Martin Luther King Jr. and establishes nonviolent protest as the movement's primary tactic. The sit-in movement, Freedom Rides, and the March on Washington (1963) — where King delivers his 'I Have a Dream' speech before 250,000 people — build relentless pressure for legislative change. The Civil Rights Act of 1964 bans discrimination based on race, color, religion, sex, or national origin. The Voting Rights Act of 1965 eliminates barriers that had disenfranchised Black voters across the South.",
+      },
+      {
+        year: "1961",
+        title: "The Space Race: Alan Shepard & The Challenge to Reach the Moon",
+        body: "The Soviet Union launches Sputnik in 1957 and sends cosmonaut Yuri Gagarin into orbit in April 1961 — the first human in space. The United States responds with urgency: Alan Shepard becomes the first American in space in May 1961. President Kennedy challenges the nation to land a man on the moon before the end of the decade. NASA's Apollo program mobilizes 400,000 engineers and scientists. On July 20, 1969, Neil Armstrong and Buzz Aldrin land on the moon — one of the defining achievements of the 20th century.",
+      },
+      {
+        year: "1963",
+        title: "The Assassination of President Kennedy",
+        body: "President John F. Kennedy is shot and killed in Dallas, Texas, on November 22. Lee Harvey Oswald is arrested for the assassination but is shot two days later by Jack Ruby before standing trial. The Warren Commission concludes Oswald acted alone, but conspiracy theories persist. Kennedy's assassination traumatizes the nation and ends a period of youthful optimism associated with his presidency, which he had called the 'New Frontier.'",
+      },
+      {
+        year: "1964–1975",
+        title: "The Vietnam War",
+        body: "U.S. military involvement in Vietnam escalates sharply after the Gulf of Tonkin Resolution (1964), which grants President Johnson broad authority to use military force. By 1969 more than 500,000 American troops are in Vietnam. Mounting casualties, the My Lai Massacre (1968), and the leaked Pentagon Papers (1971) — revealing systematic government deception — devastate public trust and fuel massive anti-war protests. The last American combat troops leave in 1973; Saigon falls to North Vietnamese forces in April 1975. More than 58,000 Americans are killed; Vietnamese deaths number in the millions. The war's legacy permanently transforms American attitudes toward military intervention.",
+      },
+    ],
+  },
+  {
+    num: "08",
+    era: "Watergate, Reagan & The End of the Cold War (1972–1991)",
+    events: [
+      {
+        year: "1972–1974",
+        title: "Watergate & Nixon's Resignation",
+        body: "In June 1972, agents connected to President Nixon's reelection campaign are arrested burglarizing Democratic Party headquarters at the Watergate complex in Washington. The subsequent cover-up, revealed through congressional hearings and investigative journalism, exposes widespread abuse of power by the Nixon administration. Facing certain impeachment and conviction, Nixon resigns on August 9, 1974 — the only American president ever to do so. Vice President Gerald Ford assumes the presidency and controversially pardons Nixon, a decision that costs him the 1976 election.",
+      },
+      {
+        year: "1979–1981",
+        title: "The Iran Hostage Crisis",
+        body: "Following the Iranian Revolution that overthrows the Shah, Iranian students seize the U.S. Embassy in Tehran on November 4, 1979, taking 66 Americans hostage. The crisis lasts 444 days, paralyzes the Carter presidency, and contributes to Carter's defeat by Ronald Reagan in 1980. The hostages are released on January 20, 1981 — minutes after Reagan is inaugurated.",
+      },
+      {
+        year: "1981–1989",
+        title: "The Reagan Revolution",
+        body: "Ronald Reagan's presidency reorients American politics and economic policy. 'Reaganomics' — cutting income taxes (particularly for the wealthy), reducing domestic spending, deregulating industry, and building up the military — represents a fundamental break from the post-New Deal consensus. Reagan dramatically increases defense spending, deploying the 'peace through strength' doctrine against the Soviet Union. His Strategic Defense Initiative ('Star Wars') accelerates Soviet military spending that they cannot sustain. The Reagan years also see the emergence of the AIDS epidemic, the Iran-Contra scandal, and the beginning of the savings and loan crisis.",
+      },
+      {
+        year: "1989–1991",
+        title: "The Berlin Wall Falls & The Cold War Ends",
+        body: "In November 1989, the Berlin Wall — the defining symbol of Cold War division — falls as East Germany opens its borders. Germany reunifies in 1990. The Soviet Union itself dissolves on December 25, 1991, when Mikhail Gorbachev resigns and 15 independent republics emerge from its territory. The United States is left as the world's sole superpower — a 'unipolar moment' whose duration and implications will be debated for decades. The Cold War's end is one of the most consequential geopolitical events of the 20th century.",
+      },
+    ],
+  },
+  {
+    num: "09",
+    era: "The Digital Age & Post-Cold War America (1991–2001)",
+    events: [
+      {
+        year: "1991",
+        title: "The Gulf War",
+        body: "Following Iraq's invasion of Kuwait, a U.S.-led coalition of 34 nations launches Operation Desert Storm on January 17. The ground campaign lasts 100 hours; Iraqi forces are routed and Kuwait is liberated. President George H.W. Bush stops short of invading Iraq and removing Saddam Hussein — a decision that leaves unresolved tensions that will explode a decade later. The Gulf War demonstrates the overwhelming superiority of American 'precision' military technology and temporarily restores confidence in American military power after Vietnam.",
+      },
+      {
+        year: "1990s",
+        title: "The Internet Revolution",
+        body: "The World Wide Web, developed by Tim Berners-Lee at CERN in 1989–1991, becomes publicly accessible and begins reshaping commerce, communication, and culture. Netscape's browser (1994), Amazon (1994), eBay (1995), and Google (1998) emerge. The dot-com boom of the late 1990s sees enormous speculative investment in internet companies, culminating in the NASDAQ reaching its all-time high in March 2000 before the dot-com crash. The internet permanently transforms the economy, politics, and social life — effects that continue to accelerate through the present.",
+      },
+      {
+        year: "1992–2000",
+        title: "The Clinton Presidency",
+        body: "Bill Clinton governs during the longest peacetime economic expansion in American history, producing budget surpluses for the first time in a generation. His presidency also includes the passage of NAFTA (1994), the crime bill that accelerates mass incarceration, and ultimately the Monica Lewinsky scandal that leads to his impeachment by the House in 1998. The Senate acquits him. The Clinton years mark the peak of the 'Washington consensus' — free trade, balanced budgets, and confidence in American-led globalization.",
+      },
+    ],
+  },
+  {
+    num: "10",
+    era: "9/11, War on Terror & The Great Recession (2001–2012)",
+    events: [
+      {
+        year: "2001",
+        title: "September 11 — The Attacks That Changed Everything",
+        body: "On September 11, 19 al-Qaeda terrorists hijack four commercial airplanes. Two are flown into the World Trade Center towers in New York City — both towers collapse. A third strikes the Pentagon. A fourth, United Airlines Flight 93, crashes into a field in Pennsylvania after passengers overpower the hijackers. Nearly 3,000 people are killed — the deadliest terrorist attack in history. The attacks trigger a fundamental reshaping of American domestic and foreign policy, including the creation of the Department of Homeland Security, the PATRIOT Act, and the launch of the War on Terror.",
+      },
+      {
+        year: "2001–2021",
+        title: "The War in Afghanistan",
+        body: "Within weeks of 9/11, the United States and NATO allies invade Afghanistan to destroy al-Qaeda's base and remove the Taliban government that sheltered them. The Taliban are quickly ousted but reconstitute as an insurgency. The war becomes America's longest — lasting nearly 20 years. Osama bin Laden, the mastermind of 9/11, is killed by U.S. Special Forces in Pakistan in May 2011. The last American forces withdraw in August 2021, and the Taliban recapture Kabul within days.",
+      },
+      {
+        year: "2003–2011",
+        title: "The Iraq War",
+        body: "In March 2003, the United States invades Iraq, claiming it possesses weapons of mass destruction (WMDs) and has links to al-Qaeda. No WMDs are found. The rapid defeat of Saddam Hussein's army is followed by a prolonged, bloody insurgency. The Abu Ghraib prisoner abuse scandal damages American credibility internationally. The war costs more than $2 trillion and approximately 4,500 American lives; Iraqi civilian deaths number in the hundreds of thousands. The decision to invade Iraq is widely regarded as one of the most consequential strategic mistakes in American history.",
+      },
+      {
+        year: "2008",
+        title: "The Great Recession & The First Black President",
+        body: "The collapse of the U.S. housing market triggers a global financial crisis — the worst since the Great Depression. Major financial institutions, including Lehman Brothers, fail. The federal government enacts a $700 billion bailout (TARP) and the Federal Reserve takes unprecedented emergency actions. Unemployment peaks at 10% in 2009. In November 2008, Barack Obama is elected president — the first African American to hold the office — on a message of hope and change, sweeping to victory as the financial crisis devastates the incumbent party.",
+      },
+      {
+        year: "2010",
+        title: "The Affordable Care Act",
+        body: "President Obama signs the Affordable Care Act (ACA) — the most significant expansion of American health coverage since Medicare and Medicaid in 1965. The law extends coverage to approximately 20 million previously uninsured Americans through Medicaid expansion, insurance exchanges, and requirements for insurers to cover pre-existing conditions. It becomes the central battleground of American political debate for the next decade.",
+      },
+    ],
+  },
+  {
+    num: "11",
+    era: "Social Media, Polarization & A Turbulent Decade (2012–2020)",
+    events: [
+      {
+        year: "2012–2016",
+        title: "The Rise of Social Media & Political Polarization",
+        body: "Facebook reaches one billion users in 2012. Twitter, Instagram, and later Snapchat and TikTok reshape how Americans consume information and form political opinions. Algorithmic content feeds optimize for engagement — often rewarding outrage, sensationalism, and confirmation bias. Political polarization, already growing for decades, accelerates. The proliferation of partisan media and the decline of shared news sources contributes to a fracturing of shared political reality.",
+      },
+      {
+        year: "2013",
+        title: "The Snowden Revelations",
+        body: "Former NSA contractor Edward Snowden leaks classified documents revealing the U.S. government's vast surveillance programs, including bulk collection of phone records and internet communications of American citizens and foreign leaders. The disclosures trigger worldwide debate about privacy, security, and the limits of government surveillance. Snowden is charged with espionage and flees to Russia, where he remains.",
+      },
+      {
+        year: "2014–2020",
+        title: "Black Lives Matter",
+        body: "Following the deaths of Trayvon Martin (2012), Michael Brown (2014), Eric Garner (2014), and many others at the hands of police, the Black Lives Matter movement emerges as a nationwide force demanding an end to systemic racism and police brutality. George Floyd's murder by a Minneapolis police officer in May 2020 — captured on video — triggers the largest wave of protests in American history, with demonstrations in all 50 states and dozens of countries.",
+      },
+      {
+        year: "2016",
+        title: "The Election of Donald Trump",
+        body: "Real estate developer and television personality Donald Trump defeats Democratic nominee Hillary Clinton in a shocking upset. Trump wins the Electoral College 306 to 232 despite losing the popular vote by approximately 3 million votes. His campaign, built on immigration restriction, trade protectionism, and attacks on political elites, signals a fundamental disruption of post-Cold War political consensus in both parties. Russian interference in the election, documented in the Mueller Report (2019), adds a further layer of controversy.",
+      },
+      {
+        year: "2020",
+        title: "COVID-19 Pandemic",
+        body: "A novel coronavirus originating in Wuhan, China, spreads globally beginning in early 2020. The United States, despite being the world's most medically advanced nation, suffers catastrophically — due to a combination of delayed response, political division over public health measures, and structural inequities in the healthcare system. Over one million Americans ultimately die from COVID-19. Lockdowns and remote work transform the economy; supply chain disruptions trigger inflation. The Pfizer-BioNTech and Moderna mRNA vaccines, authorized in December 2020, represent one of the fastest vaccine developments in history.",
+      },
+    ],
+  },
+  {
+    num: "12",
+    era: "The Contemporary Era (2020–2026)",
+    events: [
+      {
+        year: "2021",
+        title: "January 6 Capitol Insurrection",
+        body: "On January 6, a mob of Trump supporters — encouraged by the president's false claims that the 2020 election was stolen — storms the U.S. Capitol as Congress certifies Joe Biden's electoral victory. The attack kills five people and injures approximately 140 police officers. It is the first breach of the Capitol since the British attack in 1814. Trump is impeached by the House for a second time — for incitement of insurrection — but acquitted by the Senate. More than 1,000 participants are charged with federal crimes in the largest investigation in DOJ history.",
+      },
+      {
+        year: "2021–2022",
+        title: "Biden Presidency: Infrastructure, Inflation & Ukraine",
+        body: "President Biden signs the Infrastructure Investment and Jobs Act (2021), the largest infrastructure investment in decades, and the Inflation Reduction Act (2022), the largest climate investment in U.S. history. In February 2022, Russia invades Ukraine — the largest European land war since World War II. The United States and NATO allies provide tens of billions of dollars in military and economic support to Ukraine. Inflation, peaking at 9.1% in mid-2022 — the highest in 40 years — reshapes economic politics as the Federal Reserve raises interest rates aggressively.",
+      },
+      {
+        year: "2022",
+        title: "Dobbs v. Jackson: The Overturn of Roe v. Wade",
+        body: "In June, the Supreme Court overturns Roe v. Wade in Dobbs v. Jackson Women's Health Organization, eliminating the federal constitutional right to abortion that had stood since 1973. The decision returns abortion regulation to individual states. Within months, more than a dozen states ban or severely restrict abortion. The ruling reshapes American politics, energizing Democratic voters and producing unexpected Republican underperformance in the 2022 midterm elections.",
+      },
+      {
+        year: "2023–2024",
+        title: "AI Revolution & The 2024 Election",
+        body: "The launch of ChatGPT in November 2022 and the rapid commercialization of large language models triggers what many consider a technological inflection point comparable to the internet revolution. AI tools begin transforming knowledge work, creative industries, and medicine. In the 2024 presidential election, Donald Trump becomes the first former president convicted of felony crimes — 34 counts in New York — and the first to be elected to non-consecutive terms since Grover Cleveland. Trump defeats Vice President Kamala Harris, who replaced President Biden after he withdrew from the race citing age concerns. Harris would have been the first woman and first person of South Asian heritage to serve as president.",
+      },
+      {
+        year: "2025–2026",
+        title: "The Trump Second Term & A Nation in Flux",
+        body: "Donald Trump returns to the White House in January 2025, enacting sweeping executive orders on immigration, trade, and federal spending. Mass deportation operations, sweeping tariffs — including a 25% tariff on Canadian and Mexican goods and a major trade conflict with China — and efforts to reduce the federal workforce through the Department of Government Efficiency (DOGE) dominate the first months of his second term. Federal courts issue multiple rulings blocking aspects of these actions. The United States' relationships with traditional allies are strained. The country navigates a period of profound uncertainty about its institutions, international role, and domestic direction — a continuation of tensions that have defined American life since at least 2016.",
+      },
+    ],
+  },
+];
+
+function USHistoryPage() {
+  return (
+    <motion.div
+      key="us_history"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="max-w-3xl mx-auto px-6 md:px-10 py-10"
+    >
+      {/* Page header */}
+      <header className="mb-12">
+        <div className="flex items-center gap-3 mb-4">
+          <Flag size={16} style={{ color: "oklch(var(--handbook-amber))" }} />
+          <span
+            className="font-mono-code text-xs font-semibold tracking-widest uppercase"
+            style={{ color: "oklch(var(--handbook-amber))" }}
+          >
+            Historical Timeline
+          </span>
+          <div
+            className="h-px flex-1"
+            style={{ background: "oklch(var(--handbook-rule))" }}
+          />
+        </div>
+        <h1 className="font-display text-4xl md:text-5xl font-semibold text-foreground mb-5 leading-tight">
+          US History: 1700–2026
+        </h1>
+        <p
+          className="text-base leading-relaxed max-w-2xl"
+          style={{ color: "oklch(var(--handbook-subtitle-text))" }}
+        >
+          A concise timeline of the most important events in American history —
+          from the colonial era and the Revolution through the Civil War, world
+          wars, Civil Rights, the Cold War, and the turbulent present.
+        </p>
+        <div
+          className="mt-8 h-px"
+          style={{ background: "oklch(var(--handbook-rule))" }}
+        />
+      </header>
+
+      {/* Eras */}
+      <div className="space-y-14">
+        {US_HISTORY_ERAS.map((era, eraIdx) => (
+          <motion.section
+            key={era.num}
+            data-ocid={`ushistory.era.item.${eraIdx + 1}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: eraIdx * 0.04, duration: 0.3 }}
+          >
+            {/* Era header */}
+            <div className="flex items-baseline gap-3 mb-6">
+              <span
+                className="font-mono-code text-xs font-medium shrink-0"
+                style={{ color: "oklch(var(--handbook-section-num))" }}
+                aria-hidden="true"
+              >
+                {era.num}
+              </span>
+              <h2 className="font-display text-xl font-semibold text-foreground leading-snug">
+                {era.era}
+              </h2>
+            </div>
+
+            {/* Events */}
+            <div
+              className="pl-9 space-y-8 border-l-2"
+              style={{ borderColor: "oklch(var(--handbook-amber) / 0.2)" }}
+            >
+              {era.events.map((event, eventIdx) => (
+                <motion.div
+                  key={`${era.num}-${event.year}`}
+                  data-ocid={`ushistory.event.item.${eventIdx + 1}`}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    delay: eraIdx * 0.04 + eventIdx * 0.03,
+                    duration: 0.25,
+                  }}
+                  className="relative pl-5"
+                >
+                  {/* Timeline dot */}
+                  <div
+                    className="absolute -left-[1.125rem] top-1.5 w-3 h-3 rounded-full border-2 shrink-0"
+                    style={{
+                      background: "oklch(var(--background))",
+                      borderColor: "oklch(var(--handbook-amber))",
+                    }}
+                  />
+
+                  {/* Year badge */}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span
+                      className="font-mono-code text-xs font-bold px-2 py-0.5 rounded"
+                      style={{
+                        background: "oklch(var(--handbook-amber) / 0.1)",
+                        color: "oklch(var(--handbook-amber))",
+                      }}
+                    >
+                      {event.year}
+                    </span>
+                    <h3 className="font-display text-base font-semibold text-foreground leading-snug">
+                      {event.title}
+                    </h3>
+                  </div>
+
+                  <p
+                    className="handbook-body-text leading-[1.85] tracking-[0.01em]"
+                    style={{ color: "oklch(var(--handbook-body-text))" }}
+                  >
+                    {event.body}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+
+            {eraIdx < US_HISTORY_ERAS.length - 1 && (
+              <div
+                className="mt-10 h-px"
+                style={{ background: "oklch(var(--handbook-rule))" }}
+              />
+            )}
+          </motion.section>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ----------------------------------------------------------------
 // Top Tab Bar
 // ----------------------------------------------------------------
 interface TabBarProps {
@@ -2098,12 +2455,6 @@ function TabBar({ activeTab, onTabChange }: TabBarProps) {
       ocid: "nav.in_home_process.tab",
     },
     {
-      id: "checklist",
-      label: "Checklist",
-      icon: <CheckSquare size={14} />,
-      ocid: "nav.checklist.tab",
-    },
-    {
       id: "calendar",
       label: "Calendar",
       icon: <CalendarDays size={14} />,
@@ -2114,6 +2465,12 @@ function TabBar({ activeTab, onTabChange }: TabBarProps) {
       label: "Financial Assistant",
       icon: <DollarSign size={14} />,
       ocid: "nav.financial.tab",
+    },
+    {
+      id: "us_history",
+      label: "US History",
+      icon: <Flag size={14} />,
+      ocid: "nav.us_history.tab",
     },
   ];
 
@@ -2510,32 +2867,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Content: Checklist view ───────────────────────────── */}
-      {activeTab === "checklist" && (
-        <div
-          className="flex-1 overflow-y-auto"
-          style={{ height: contentHeight }}
-        >
-          <AnimatePresence mode="wait">
-            <ChecklistPage key="checklist" />
-          </AnimatePresence>
-          <footer className="px-6 md:px-10 py-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap max-w-xl mx-auto">
-            <span>HVAC &amp; Insulation Handbook — Field Reference</span>
-            <span>
-              © {year}. Built with ❤ using{" "}
-              <a
-                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2 hover:text-muted-foreground transition-colors"
-              >
-                caffeine.ai
-              </a>
-            </span>
-          </footer>
-        </div>
-      )}
-
       {/* ── Content: Calendar view ────────────────────────────── */}
       {activeTab === "calendar" && (
         <div
@@ -2570,6 +2901,32 @@ export default function App() {
         >
           <AnimatePresence mode="wait">
             <FinancialAssistantPage key="financial" />
+          </AnimatePresence>
+          <footer className="px-6 md:px-10 py-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap max-w-3xl mx-auto">
+            <span>HVAC &amp; Insulation Handbook — Field Reference</span>
+            <span>
+              © {year}. Built with ❤ using{" "}
+              <a
+                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-muted-foreground transition-colors"
+              >
+                caffeine.ai
+              </a>
+            </span>
+          </footer>
+        </div>
+      )}
+
+      {/* ── Content: US History view ───────────────────────────── */}
+      {activeTab === "us_history" && (
+        <div
+          className="flex-1 overflow-y-auto"
+          style={{ height: contentHeight }}
+        >
+          <AnimatePresence mode="wait">
+            <USHistoryPage key="us_history" />
           </AnimatePresence>
           <footer className="px-6 md:px-10 py-8 border-t border-border/30 text-xs text-muted-foreground/50 flex items-center justify-between gap-4 flex-wrap max-w-3xl mx-auto">
             <span>HVAC &amp; Insulation Handbook — Field Reference</span>
