@@ -2427,35 +2427,57 @@ function HomePageView() {
   return (
     <motion.div
       key="home_page"
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="flex-1 flex items-center justify-center min-h-full px-6 py-16"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="flex-1 flex items-center justify-center min-h-full relative overflow-hidden"
+      data-ocid="homepage.panel"
     >
+      {/* Full-page library background */}
       <div
-        className="flex flex-col items-center gap-0"
-        data-ocid="homepage.panel"
-      >
-        {/* Bunny silhouette */}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage:
+            "url('/assets/generated/library-bg.dim_1920x1080.jpg')",
+        }}
+        aria-hidden="true"
+      />
+      {/* Dark overlay to deepen the mood and ensure logo readability */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.35) 50%, rgba(0,0,0,0.6) 100%)",
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Logo + E centered over background */}
+      <div className="relative z-10 flex flex-col items-center gap-0 px-6 py-16">
+        {/* Bunny silhouette — white on dark background */}
         <motion.img
           src="/assets/generated/bunny-silhouette-transparent.dim_400x400.png"
           alt="County Comfort Services"
-          initial={{ opacity: 0, scale: 0.92 }}
+          initial={{ opacity: 0, scale: 0.88 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1, duration: 0.5, ease: "easeOut" }}
-          className="w-48 h-48 md:w-64 md:h-64 object-contain select-none"
-          style={{ filter: "brightness(0) saturate(100%)" }}
+          transition={{ delay: 0.15, duration: 0.6, ease: "easeOut" }}
+          className="w-48 h-48 md:w-72 md:h-72 object-contain select-none drop-shadow-2xl"
+          style={{ filter: "brightness(0) invert(1)" }}
           draggable={false}
         />
 
         {/* Letter E */}
         <motion.span
-          initial={{ opacity: 0, y: 6 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.4, ease: "easeOut" }}
-          className="font-display text-4xl md:text-5xl font-semibold tracking-widest text-foreground leading-none mt-1"
-          style={{ letterSpacing: "0.05em" }}
+          transition={{ delay: 0.4, duration: 0.45, ease: "easeOut" }}
+          className="font-display text-5xl md:text-6xl font-semibold tracking-widest leading-none mt-2 drop-shadow-lg"
+          style={{
+            color: "#ffffff",
+            letterSpacing: "0.12em",
+            textShadow: "0 2px 20px rgba(0,0,0,0.7)",
+          }}
         >
           E
         </motion.span>
