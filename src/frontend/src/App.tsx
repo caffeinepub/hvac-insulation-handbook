@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Clock,
   DollarSign,
+  DoorOpen,
   Flag,
   Home,
   Loader2,
@@ -22,6 +23,7 @@ import { useActor } from "./hooks/useActor";
 // Types
 // ----------------------------------------------------------------
 type TabView =
+  | "home_page"
   | "handbook"
   | "history"
   | "sales_tips"
@@ -2418,6 +2420,50 @@ function USHistoryPage() {
 // ----------------------------------------------------------------
 // Top Tab Bar
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// Home Page
+// ----------------------------------------------------------------
+function HomePageView() {
+  return (
+    <motion.div
+      key="home_page"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="flex-1 flex items-center justify-center min-h-full px-6 py-16"
+    >
+      <div
+        className="flex flex-col items-center gap-0"
+        data-ocid="homepage.panel"
+      >
+        {/* Bunny silhouette */}
+        <motion.img
+          src="/assets/generated/bunny-silhouette-transparent.dim_400x400.png"
+          alt="County Comfort Services"
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1, duration: 0.5, ease: "easeOut" }}
+          className="w-48 h-48 md:w-64 md:h-64 object-contain select-none"
+          style={{ filter: "brightness(0) saturate(100%)" }}
+          draggable={false}
+        />
+
+        {/* Letter E */}
+        <motion.span
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4, ease: "easeOut" }}
+          className="font-display text-4xl md:text-5xl font-semibold tracking-widest text-foreground leading-none mt-1"
+          style={{ letterSpacing: "0.05em" }}
+        >
+          E
+        </motion.span>
+      </div>
+    </motion.div>
+  );
+}
+
 interface TabBarProps {
   activeTab: TabView;
   onTabChange: (tab: TabView) => void;
@@ -2430,6 +2476,12 @@ function TabBar({ activeTab, onTabChange }: TabBarProps) {
     icon: React.ReactNode;
     ocid: string;
   }[] = [
+    {
+      id: "home_page",
+      label: "Home Page",
+      icon: <Home size={14} />,
+      ocid: "nav.home_page.tab",
+    },
     {
       id: "handbook",
       label: "Handbook",
@@ -2451,7 +2503,7 @@ function TabBar({ activeTab, onTabChange }: TabBarProps) {
     {
       id: "in_home_process",
       label: "In Home Process",
-      icon: <Home size={14} />,
+      icon: <DoorOpen size={14} />,
       ocid: "nav.in_home_process.tab",
     },
     {
@@ -2524,7 +2576,7 @@ function TabBar({ activeTab, onTabChange }: TabBarProps) {
 // Main App
 // ----------------------------------------------------------------
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabView>("handbook");
+  const [activeTab, setActiveTab] = useState<TabView>("home_page");
   const [activeSectionIndex, setActiveSectionIndex] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2643,6 +2695,18 @@ export default function App() {
 
       {/* ── Tab Bar ─────────────────────────────────────────── */}
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+
+      {/* ── Content: Home Page view ────────────────────────── */}
+      {activeTab === "home_page" && (
+        <div
+          className="flex flex-1 overflow-y-auto"
+          style={{ height: contentHeight }}
+        >
+          <AnimatePresence mode="wait">
+            <HomePageView key="home_page" />
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* ── Content: Handbook view ─────────────────────────── */}
       {activeTab === "handbook" && (
